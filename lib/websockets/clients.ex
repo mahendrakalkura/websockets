@@ -1,6 +1,5 @@
 defmodule WebSockets.Clients do
-  @moduledoc """
-  """
+  @moduledoc ""
 
   use GenServer
 

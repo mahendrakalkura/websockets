@@ -1,6 +1,5 @@
 defmodule WebSockets.Repo do
-  @moduledoc """
-  """
+  @moduledoc ""
 
   use Ecto.Repo, otp_app: :websockets
 end

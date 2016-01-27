@@ -1,6 +1,5 @@
 defmodule WebSocketsTest do
-  @moduledoc """
-  """
+  @moduledoc ""
 
   use ExUnit.Case
 

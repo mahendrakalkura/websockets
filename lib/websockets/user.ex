@@ -1,6 +1,5 @@
 defmodule WebSockets.User do
-  @moduledoc """
-  """
+  @moduledoc ""
 
   use Ecto.Schema
 

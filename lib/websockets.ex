@@ -1,6 +1,5 @@
 defmodule WebSockets do
-  @moduledoc """
-  """
+  @moduledoc ""
 
   def start(_type, _args) do
     WebSockets.Supervisor.start_link()

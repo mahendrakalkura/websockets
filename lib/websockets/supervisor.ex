@@ -1,6 +1,5 @@
 defmodule WebSockets.Supervisor do
-  @moduledoc """
-  """
+  @moduledoc ""
 
   use Supervisor
 

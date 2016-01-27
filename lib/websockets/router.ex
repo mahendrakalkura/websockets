@@ -1,8 +1,7 @@
 defmodule WebSockets.Router do
   @behaviour :cowboy_websocket_handler
 
-  @moduledoc """
-  """
+  @moduledoc ""
 
   alias Ecto.Query, as: Query
   alias WebSockets.Clients, as: Clients
