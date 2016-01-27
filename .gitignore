@@ -1,6 +1,7 @@
-*.beam
 *.ez
 *.sw*
 /_build
+/cover
 /deps
+config/config.exs
 erl_crash.dump
