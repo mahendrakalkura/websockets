@@ -17,21 +17,13 @@ defmodule WebSockets.Mixfile do
         :logger,
         :postgrex,
         :ranch,
+        :tzdata,
       ],
       mod: {WebSockets, []},
     ]
   end
 
-  def project() do
-    [
-      app: :websockets,
-      deps: deps,
-      elixir: "~> 1.2.0",
-      version: "0.0.1",
-    ]
-  end
-
-  defp deps() do
+  def deps() do
     [
       {:amqp, "0.1.4"},
       {:cowboy, "1.0.0"},
@@ -42,6 +34,16 @@ defmodule WebSockets.Mixfile do
       {:exsentry, "0.2.1"},
       {:geo, "1.0.0"},
       {:postgrex, "0.11.0"},
+      {:timex, "1.0.0"},
+    ]
+  end
+
+  def project() do
+    [
+      app: :websockets,
+      deps: deps,
+      elixir: "~> 1.2.0",
+      version: "0.0.1",
     ]
   end
 end
