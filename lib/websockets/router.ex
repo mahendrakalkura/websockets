@@ -3,10 +3,11 @@ defmodule WebSockets.Router do
 
   @moduledoc ""
 
-  alias Ecto.Query, as: Query
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
   alias WebSockets.User, as: User
+
+  import Ecto.Query
 
   def init(_protocol, _req, _opts) do
     {:upgrade, :protocol, :cowboy_websocket}
