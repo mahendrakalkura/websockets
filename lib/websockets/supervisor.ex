@@ -29,6 +29,7 @@ defmodule WebSockets.Supervisor do
     supervise(
       [
         worker(WebSockets.Clients, [[], []]),
+        worker(WebSockets.RabbitMQ, []),
         worker(WebSockets.Repo, []),
       ],
       strategy: :one_for_one,

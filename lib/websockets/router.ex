@@ -5,9 +5,8 @@ defmodule WebSockets.Router do
 
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
-  alias WebSockets.User, as: User
 
-  import Ecto.Query
+  import Ecto.Adapters.SQL
 
   def init(_protocol, _req, _opts) do
     {:upgrade, :protocol, :cowboy_websocket}
@@ -35,19 +34,25 @@ defmodule WebSockets.Router do
   end
 
   def websocket_handle_("users", body, req, state) do
-    Repo.all(from user in User, select: user)
+    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
+      Repo, "SELECT * FROM api_users", [], []
+    )
     Clients.insert(to_string(:erlang.pid_to_list(self())), body)
     {:ok, message} = JSX.encode(%{subject: "users", body: true})
     {:reply, {:text, message}, req, state}
   end
 
   def websocket_handle_("users_locations_post", body, req, state) do
-    Repo.all(from user in User, select: user)
+    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
+      Repo, "SELECT * FROM api_users", [], []
+    )
     {:ok, message} = JSX.encode(%{subject: "users_locations_post", body: body})
     Enum.each(
       Clients.select_all(),
       fn({key, _}) ->
-        Repo.all(from user in User, select: user)
+        {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
+          Repo, "SELECT * FROM api_users", [], []
+        )
         send(
           :erlang.list_to_pid(to_char_list(key)),
           {"users_locations_get", body}

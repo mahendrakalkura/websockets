@@ -1,8 +1,13 @@
 use Mix.Config
 
-config :logger, level: :info
+config :exsentry,
+  dsn: "..."
+
+config :logger,
+  level: :info
 
 config :websockets,
+  broker: "...",
   hostname: "...",
   port: ...
 
