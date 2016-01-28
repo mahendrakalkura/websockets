@@ -11,13 +11,14 @@ config :websockets,
   hostname: "...",
   port: ...
 
-config :websockets, WebSockets.Repo,
-  adapter: Ecto.Adapters.Postgres,
-  database: "...",
-  extensions: [
-    {Geo.PostGIS.Extension, library: Geo},
-  ],
-  hostname: "...",
-  password: "...",
-  port: ...,
-  username: "..."
+config :websockets,
+  WebSockets.Repo,
+    adapter: Ecto.Adapters.Postgres,
+    database: "...",
+    extensions: [
+      {Geo.PostGIS.Extension, library: Geo},
+    ],
+    hostname: "...",
+    password: "...",
+    port: ...,
+    username: "..."
