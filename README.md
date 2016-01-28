@@ -22,7 +22,7 @@ $ mix deps.compile
 
 ```
 $ cd websockets
-$ mix run --no-halt
+$ iex -S mix
 ```
 
 # How to test?
