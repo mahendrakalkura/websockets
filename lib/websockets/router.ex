@@ -24,16 +24,38 @@ defmodule WebSockets.Router do
     {:reply, {:text, "ping"}, req, state}
   end
 
-  def websocket_handle({:text, content}, req, state) do
-    case JSX.decode(content) do
-      {:ok, %{"subject" => subject, "body" => body}} ->
-        websocket_handle_(subject, body, req, state)
-      _ ->
-        {:ok, req, state}
+  def websocket_handle({:text, contents}, req, state) do
+    try do
+      case JSX.decode(contents) do
+        {:ok, %{"subject" => subject, "body" => body}} ->
+          process(subject, body, req, state)
+        _ ->
+          ExSentry.capture_message(
+            "Invalid Contents", extra: %{"contents": contents}
+          )
+          {:ok, req, state}
+      end
+    rescue
+      exception ->
+        ExSentry.capture_exception(exception)
     end
   end
 
-  def websocket_handle_("users", body, req, state) do
+  def websocket_info({"users_locations_get", body}, req, state) do
+    {:ok, message} = JSX.encode(%{subject: "users_locations_get", body: body})
+    {:reply, {:text, message}, req, state}
+  end
+
+  def websocket_info(_info, req, state) do
+    {:ok, req, state}
+  end
+
+  def websocket_terminate(_reason, _req, _state) do
+    Clients.delete(to_string(:erlang.pid_to_list(self())))
+    :ok
+  end
+
+  def process("messages", body, req, state) do
     {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
       Repo, "SELECT * FROM api_users", [], []
     )
@@ -42,7 +64,16 @@ defmodule WebSockets.Router do
     {:reply, {:text, message}, req, state}
   end
 
-  def websocket_handle_("users_locations_post", body, req, state) do
+  def process("users", body, req, state) do
+    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
+      Repo, "SELECT * FROM api_users", [], []
+    )
+    Clients.insert(to_string(:erlang.pid_to_list(self())), body)
+    {:ok, message} = JSX.encode(%{subject: "users", body: true})
+    {:reply, {:text, message}, req, state}
+  end
+
+  def process("users_locations_post", body, req, state) do
     {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
       Repo, "SELECT * FROM api_users", [], []
     )
@@ -62,21 +93,7 @@ defmodule WebSockets.Router do
     {:reply, {:text, message}, req, state}
   end
 
-  def websocket_handle_(_subject, _body, req, state) do
+  def process(_subject, _body, req, state) do
     {:ok, req, state}
-  end
-
-  def websocket_info({"users_locations_get", body}, req, state) do
-    {:ok, message} = JSX.encode(%{subject: "users_locations_get", body: body})
-    {:reply, {:text, message}, req, state}
-  end
-
-  def websocket_info(_info, req, state) do
-    {:ok, req, state}
-  end
-
-  def websocket_terminate(_reason, _req, _state) do
-    Clients.delete(to_string(:erlang.pid_to_list(self())))
-    :ok
   end
 end
