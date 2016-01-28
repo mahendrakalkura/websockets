@@ -3,5 +3,5 @@ defmodule WebSocketsTest do
 
   use ExUnit.Case
 
-  doctest WebSockets
+  doctest(WebSockets)
 end
