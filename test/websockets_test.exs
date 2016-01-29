@@ -1,7 +1,11 @@
 defmodule WebSocketsTest do
   @moduledoc ""
 
-  use ExUnit.Case
+  alias ExUnit.DocTest, as: DocTest
 
-  doctest(WebSockets)
+  require WebSockets
+
+  use ExUnit.Case, async: true
+
+  DocTest.doctest(WebSockets)
 end

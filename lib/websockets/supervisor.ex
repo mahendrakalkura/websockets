@@ -1,6 +1,13 @@
 defmodule WebSockets.Supervisor do
   @moduledoc ""
 
+  alias WebSockets.Clients, as: Clients
+  alias WebSockets.RabbitMQ, as: RabbitMQ
+  alias WebSockets.Repo, as: Repo
+  alias WebSockets.Router, as: Router
+
+  require Application
+
   use Supervisor
 
   def start_link() do
@@ -20,7 +27,7 @@ defmodule WebSockets.Supervisor do
           [
             {
               :dispatch,
-              :cowboy_router.compile([{:_, [{"/", WebSockets.Router, []}]}]),
+              :cowboy_router.compile([{:_, [{"/", Router, []}]}]),
             },
           ],
         },
@@ -28,9 +35,9 @@ defmodule WebSockets.Supervisor do
     )
     supervise(
       [
-        worker(WebSockets.Clients, [[], []]),
-        worker(WebSockets.RabbitMQ, []),
-        worker(WebSockets.Repo, []),
+        worker(Clients, [[], []]),
+        worker(RabbitMQ, []),
+        worker(Repo, []),
       ],
       strategy: :one_for_one,
     )

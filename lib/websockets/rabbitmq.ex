@@ -4,7 +4,16 @@ defmodule WebSockets.RabbitMQ do
   @exchange "api.management.commands.websockets"
   @queue "api.management.commands.websockets"
 
-  use AMQP
+  alias AMQP.Basic, as: Basic
+  alias AMQP.Channel, as: Channel
+  alias AMQP.Connection, as: Connection
+  alias AMQP.Exchange, as: Exchange
+  alias AMQP.Queue, as: Queue
+
+  require Application
+  require ExSentry
+  require JSX
+
   use GenServer
 
   def start_link() do
@@ -49,9 +58,11 @@ defmodule WebSockets.RabbitMQ do
     {:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}},
     channel
   ) do
-    spawn fn ->
-      consume(channel, tag, redelivered, payload)
-    end
+    spawn(
+      fn ->
+        consume(channel, tag, redelivered, payload)
+      end
+    )
     {:noreply, channel}
   end
 
@@ -60,45 +71,38 @@ defmodule WebSockets.RabbitMQ do
       case JSX.decode(contents) do
         {:ok, %{"subject" => subject, "body" => body}} ->
           process(subject, body)
-          Basic.ack channel, tag
+          Basic.ack(channel, tag)
         _ ->
           ExSentry.capture_message(
             "Invalid Contents", extra: %{"contents": contents}
           )
-          Basic.reject channel, tag, requeue: not redelivered
+          Basic.reject(channel, tag, requeue: not redelivered)
       end
     rescue
       exception ->
         ExSentry.capture_exception(exception)
-        Basic.reject channel, tag, requeue: not redelivered
+        Basic.reject(channel, tag, requeue: not redelivered)
     end
   end
 
-  def process("blocks", body) do
-    # IO.inspect(body)
+  def process("blocks", _body) do
   end
 
-  def process("master_tells", body) do
-    # IO.inspect(body)
+  def process("master_tells", _body) do
   end
 
-  def process("messages", body) do
-    # IO.inspect(body)
+  def process("messages", _body) do
   end
 
-  def process("notifications", body) do
-    # IO.inspect(body)
+  def process("notifications", _body) do
   end
 
-  def process("posts", body) do
-    # IO.inspect(body)
+  def process("posts", _body) do
   end
 
-  def process("users", body) do
-    # IO.inspect(body)
+  def process("users", _body) do
   end
 
-  def process("users_locations", body) do
-    # IO.inspect(body)
+  def process("users_locations", _body) do
   end
 end

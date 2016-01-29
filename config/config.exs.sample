@@ -1,3 +1,7 @@
+alias Ecto.Adapters.Postgres, as: Postgres
+alias Geo.PostGIS.Extension, as: Extension
+alias WebSockets.Repo, as: Repo
+
 use Mix.Config
 
 config :exsentry,
@@ -9,14 +13,15 @@ config :logger,
 config :websockets,
   broker: "...",
   hostname: "...",
-  port: ...
+  port: ...,
+  salt: "..."
 
 config :websockets,
-  WebSockets.Repo,
-    adapter: Ecto.Adapters.Postgres,
+  Repo,
+    adapter: Postgres,
     database: "...",
     extensions: [
-      {Geo.PostGIS.Extension, library: Geo},
+      {Extension, library: Geo},
     ],
     hostname: "...",
     password: "...",

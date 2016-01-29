@@ -8,6 +8,10 @@ defmodule WebSockets.Router do
 
   import Ecto.Adapters.SQL
 
+  require Enum
+  require ExSentry
+  require JSX
+
   def init(_protocol, _req, _opts) do
     {:upgrade, :protocol, :cowboy_websocket}
   end
@@ -51,49 +55,52 @@ defmodule WebSockets.Router do
   end
 
   def websocket_terminate(_reason, _req, _state) do
-    Clients.delete(to_string(:erlang.pid_to_list(self())))
+    self
+      |> :erlang.pid_to_list()
+      |> to_string()
+      |> Clients.delete()
     :ok
   end
 
   def process("messages", body, req, state) do
-    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
-      Repo, "SELECT * FROM api_users", [], []
-    )
-    Clients.insert(to_string(:erlang.pid_to_list(self())), body)
-    {:ok, message} = JSX.encode(%{subject: "users", body: true})
+    users()
+    {:ok, message} = JSX.encode(%{subject: "messages", body: body})
     {:reply, {:text, message}, req, state}
   end
 
   def process("users", body, req, state) do
-    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
-      Repo, "SELECT * FROM api_users", [], []
-    )
-    Clients.insert(to_string(:erlang.pid_to_list(self())), body)
+    users()
+    self
+      |> :erlang.pid_to_list()
+      |> to_string()
+      |> Clients.insert(body)
     {:ok, message} = JSX.encode(%{subject: "users", body: true})
     {:reply, {:text, message}, req, state}
   end
 
   def process("users_locations_post", body, req, state) do
-    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
-      Repo, "SELECT * FROM api_users", [], []
-    )
+    users()
     {:ok, message} = JSX.encode(%{subject: "users_locations_post", body: body})
-    Enum.each(
-      Clients.select_all(),
-      fn({key, _}) ->
-        {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
-          Repo, "SELECT * FROM api_users", [], []
-        )
-        send(
-          :erlang.list_to_pid(to_char_list(key)),
-          {"users_locations_get", body}
-        )
-      end
-    )
+    Clients.select_all()
+      |> Enum.each(
+        fn({key, _}) ->
+          users()
+          key
+            |> to_char_list()
+            |> :erlang.list_to_pid()
+            |> send({"users_locations_get", body})
+        end
+      )
     {:reply, {:text, message}, req, state}
   end
 
   def process(_subject, _body, req, state) do
     {:ok, req, state}
+  end
+
+  def users() do
+    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
+      Repo, "SELECT * FROM api_users", [], []
+    )
   end
 end
