@@ -3,16 +3,18 @@ defmodule WebSockets.Router do
 
   @moduledoc ""
 
+  alias Comeonin.Bcrypt, as: Bcrypt
+  alias Ecto.Adapters.SQL, as: SQL
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
-
-  import Ecto.Adapters.SQL
 
   require Application
   require Enum
   require ExSentry
+  require Integer
   require JSX
   require Kernel
+  require String
   require System
 
   def init(_protocol, _req, _opts) do
@@ -71,22 +73,30 @@ defmodule WebSockets.Router do
   end
 
   def process("users", body, req, state) do
-    case System.cmd(
-      Application.get_env(:websockets, :python),
-      [
-        Application.get_env(:websockets, :django),
-        "user",
-        body,
-      ],
-      stderr_to_stdout: false
+    [id, hash] = String.split(
+      body, Application.get_env(:websockets, :separator), parts: 2
+    )
+    case Bcrypt.checkpw(
+      id <> Application.get_env(:websockets, :secret), hash
     ) do
-      {"True", 0} ->
-        self
-          |> :erlang.pid_to_list()
-          |> Kernel.to_string()
-          |> Clients.insert(body)
-        {:ok, message} = JSX.encode(%{subject: "users", body: true})
-        {:reply, {:text, message}, req, state}
+      true ->
+        try do
+          {id, _} = Integer.parse(id)
+          {:ok, %{"rows": _rows, "num_rows": 1}} = SQL.query(
+            Repo, "SELECT * FROM api_users WHERE id = $1", [id], []
+          )
+          self
+            |> :erlang.pid_to_list()
+            |> Kernel.to_string()
+            |> Clients.insert(id)
+          {:ok, message} = JSX.encode(%{subject: "users", body: true})
+          {:reply, {:text, message}, req, state}
+        rescue
+          exception ->
+            ExSentry.capture_exception(exception)
+            {:ok, message} = JSX.encode(%{subject: "users", body: false})
+            {:reply, {:text, message}, req, state}
+        end
       _ ->
         {:ok, message} = JSX.encode(%{subject: "users", body: false})
         {:reply, {:text, message}, req, state}

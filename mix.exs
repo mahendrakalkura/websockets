@@ -7,6 +7,7 @@ defmodule WebSockets.Mixfile do
     [
       applications: [
         :amqp,
+        :comeonin,
         :cowboy,
         :credo,
         :dogma,
@@ -26,6 +27,7 @@ defmodule WebSockets.Mixfile do
   def deps() do
     [
       {:amqp, "0.1.4"},
+      {:comeonin, "2.1.0"},
       {:cowboy, "1.0.0"},
       {:credo, "0.3.0-dev"},
       {:dogma, "0.0.11"},

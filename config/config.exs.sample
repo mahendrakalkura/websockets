@@ -4,6 +4,9 @@ alias WebSockets.Repo, as: Repo
 
 use Mix.Config
 
+config :comeonin,
+  :pbkdf2_rounds, 12
+
 config :exsentry,
   dsn: "..."
 
@@ -12,10 +15,10 @@ config :logger,
 
 config :websockets,
   broker: "...",
-  django: "...",
   hostname: "...",
   port: ...,
-  python: "..."
+  secret: "...",
+  separator: "..."
 
 config :websockets,
   Repo,
