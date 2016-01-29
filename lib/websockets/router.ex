@@ -94,16 +94,21 @@ defmodule WebSockets.Router do
   end
 
   def process("users", body, req, state) do
-    [id, hash] = String.split(body, Application.get_env(:websockets, :separator), parts: 2)
-    if Bcrypt.checkpw(id <> Application.get_env(:websockets, :secret), hash) do
-      {id, _} = Integer.parse(id)
-      {:ok, %{rows: _rows, num_rows: 1}} = SQL.query(Repo, "SELECT * FROM api_users WHERE id = $1", [id], [])
-      self |> :erlang.pid_to_list() |> Kernel.to_string() |> Clients.insert(id)
-      {:ok, message} = JSX.encode(%{"subject" => "users", "body" => true})
-      {:reply, {:text, message}, req, state}
-    else
-      {:ok, message} = JSX.encode(%{"subject" => "users", "body" => false})
-      {:reply, {:text, message}, req, state}
+    case String.split(body, Application.get_env(:websockets, :separator), parts: 2, trim: true) do
+      [id, hash] ->
+        if Bcrypt.checkpw(id <> Application.get_env(:websockets, :secret), hash) do
+          {id, _} = Integer.parse(id)
+          {:ok, %{rows: _rows, num_rows: 1}} = SQL.query(Repo, "SELECT * FROM api_users WHERE id = $1", [id], [])
+          self |> :erlang.pid_to_list() |> Kernel.to_string() |> Clients.insert(id)
+          {:ok, message} = JSX.encode(%{"subject" => "users", "body" => true})
+          {:reply, {:text, message}, req, state}
+        else
+          {:ok, message} = JSX.encode(%{"subject" => "users", "body" => false})
+          {:reply, {:text, message}, req, state}
+        end
+      _ ->
+        {:ok, message} = JSX.encode(%{"subject" => "users", "body" => false})
+        {:reply, {:text, message}, req, state}
     end
   end
 
