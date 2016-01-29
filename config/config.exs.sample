@@ -12,9 +12,10 @@ config :logger,
 
 config :websockets,
   broker: "...",
+  django: "...",
   hostname: "...",
   port: ...,
-  salt: "..."
+  python: "..."
 
 config :websockets,
   Repo,
