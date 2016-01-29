@@ -7,6 +7,9 @@ use Mix.Config
 config :comeonin,
   :pbkdf2_rounds, 12
 
+config :dogma,
+  override: %{FunctionArity => [max: 5], LineLength => [max_length: 120]}
+
 config :exsentry,
   dsn: "..."
 
@@ -20,14 +23,11 @@ config :websockets,
   secret: "...",
   separator: "..."
 
-config :websockets,
-  Repo,
-    adapter: Postgres,
-    database: "...",
-    extensions: [
-      {Extension, library: Geo},
-    ],
-    hostname: "...",
-    password: "...",
-    port: ...,
-    username: "..."
+config :websockets, Repo,
+  adapter: Postgres,
+  database: "...",
+  extensions: [{Extension, library: Geo}],
+  hostname: "...",
+  password: "...",
+  port: ...,
+  username: "..."
