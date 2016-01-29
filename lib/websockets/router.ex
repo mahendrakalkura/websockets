@@ -60,10 +60,10 @@ defmodule WebSockets.Router do
   end
 
   def websocket_terminate(_reason, _req, _state) do
-    self
+    key = self
       |> :erlang.pid_to_list()
       |> Kernel.to_string()
-      |> Clients.delete()
+    Clients.delete(key: key)
     :ok
   end
 
