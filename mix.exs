@@ -41,11 +41,6 @@ defmodule WebSockets.Mixfile do
   end
 
   def project() do
-    [
-      app: :websockets,
-      deps: deps,
-      elixir: "~> 1.2.0",
-      version: "0.0.1",
-    ]
+    [app: :websockets, deps: deps, elixir: "~> 1.2.0", version: "0.0.1"]
   end
 end
