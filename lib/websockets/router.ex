@@ -8,9 +8,12 @@ defmodule WebSockets.Router do
 
   import Ecto.Adapters.SQL
 
+  require Application
   require Enum
   require ExSentry
   require JSX
+  require Kernel
+  require System
 
   def init(_protocol, _req, _opts) do
     {:upgrade, :protocol, :cowboy_websocket}
@@ -57,38 +60,48 @@ defmodule WebSockets.Router do
   def websocket_terminate(_reason, _req, _state) do
     self
       |> :erlang.pid_to_list()
-      |> to_string()
+      |> Kernel.to_string()
       |> Clients.delete()
     :ok
   end
 
   def process("messages", body, req, state) do
-    users()
     {:ok, message} = JSX.encode(%{subject: "messages", body: body})
     {:reply, {:text, message}, req, state}
   end
 
   def process("users", body, req, state) do
-    users()
-    self
-      |> :erlang.pid_to_list()
-      |> to_string()
-      |> Clients.insert(body)
-    {:ok, message} = JSX.encode(%{subject: "users", body: true})
-    {:reply, {:text, message}, req, state}
+    case System.cmd(
+      Application.get_env(:websockets, :python),
+      [
+        Application.get_env(:websockets, :django),
+        "user",
+        body,
+      ],
+      stderr_to_stdout: false
+    ) do
+      {"True", 0} ->
+        self
+          |> :erlang.pid_to_list()
+          |> Kernel.to_string()
+          |> Clients.insert(body)
+        {:ok, message} = JSX.encode(%{subject: "users", body: true})
+        {:reply, {:text, message}, req, state}
+      _ ->
+        {:ok, message} = JSX.encode(%{subject: "users", body: false})
+        {:reply, {:text, message}, req, state}
+    end
   end
 
   def process("users_locations_post", body, req, state) do
-    users()
     {:ok, message} = JSX.encode(%{subject: "users_locations_post", body: body})
     Clients.select_all()
       |> Enum.each(
         fn({key, _}) ->
-          users()
           key
-            |> to_char_list()
+            |> Kernel.to_char_list()
             |> :erlang.list_to_pid()
-            |> send({"users_locations_get", body})
+            |> Kernel.send({"users_locations_get", body})
         end
       )
     {:reply, {:text, message}, req, state}
@@ -96,11 +109,5 @@ defmodule WebSockets.Router do
 
   def process(_subject, _body, req, state) do
     {:ok, req, state}
-  end
-
-  def users() do
-    {:ok, %{"rows": _rows, "num_rows": _num_rows}} = query(
-      Repo, "SELECT * FROM api_users", [], []
-    )
   end
 end

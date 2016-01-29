@@ -1,6 +1,7 @@
 defmodule WebSockets.Supervisor do
   @moduledoc ""
 
+  alias Supervisor.Spec, as: Spec
   alias WebSockets.Clients, as: Clients
   alias WebSockets.RabbitMQ, as: RabbitMQ
   alias WebSockets.Repo, as: Repo
@@ -33,11 +34,11 @@ defmodule WebSockets.Supervisor do
         },
       ]
     )
-    supervise(
+    Spec.supervise(
       [
-        worker(Clients, [[], []]),
-        worker(RabbitMQ, []),
-        worker(Repo, []),
+        Spec.worker(Clients, [[], []]),
+        Spec.worker(RabbitMQ, []),
+        Spec.worker(Repo, []),
       ],
       strategy: :one_for_one,
     )
