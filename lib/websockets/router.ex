@@ -34,90 +34,98 @@ defmodule WebSockets.Router do
   end
 
   def websocket_handle({:text, contents}, req, state) do
+    websocket_handle({:text, contents}, JSX.decode(contents), req, state)
+  end
+
+  def websocket_handle({:text, _contents}, {:ok, %{"subject" => subject, "body" => body}}, req, state) do
     try do
-      case JSX.decode(contents) do
-        {:ok, %{"subject" => subject, "body" => body}} ->
-          process(subject, body, req, state)
-        _ ->
-          ExSentry.capture_message(
-            "Invalid Contents", extra: %{"contents": contents}
-          )
-          {:ok, req, state}
-      end
+      process(subject, body, req, state)
     rescue
       exception ->
-        ExSentry.capture_exception(exception)
+        Kernel.spawn(fn -> ExSentry.capture_exception(exception, extra: %{"subject" => subject, "body" => body}) end)
+        {:ok, req, state}
     end
   end
 
-  def websocket_info({"users_locations_get", body}, req, state) do
-    {:ok, message} = JSX.encode(%{subject: "users_locations_get", body: body})
+  def websocket_handle({:text, contents}, {:ok, _}, req, state) do
+    Kernel.spawn(fn -> ExSentry.capture_message("Invalid Contents (#1)", extra: %{"contents" => contents}) end)
+    {:ok, req, state}
+  end
+
+  def websocket_handle({:text, contents}, {:error, reason}, req, state) do
+    Kernel.spawn(
+      fn -> ExSentry.capture_message("Invalid Contents (#2)", extra: %{"contents" => contents, "reason" => reason}) end
+    )
+    {:ok, req, state}
+  end
+
+  def websocket_info({"messages", body}, req, state) do
+    {:ok, message} = JSX.encode(%{"subject" => "messages", "body" => body})
     {:reply, {:text, message}, req, state}
   end
 
-  def websocket_info(_info, req, state) do
+  def websocket_info({"users_locations_get", body}, req, state) do
+    {:ok, message} = JSX.encode(%{"subject" => "users_locations_get", "body" => body})
+    {:reply, {:text, message}, req, state}
+  end
+
+  def websocket_info(_contents, req, state) do
     {:ok, req, state}
   end
 
   def websocket_terminate(_reason, _req, _state) do
-    key = self
-      |> :erlang.pid_to_list()
-      |> Kernel.to_string()
-    Clients.delete(key: key)
+    Clients.delete(key: self |> :erlang.pid_to_list() |> Kernel.to_string())
     :ok
   end
 
   def process("messages", body, req, state) do
-    {:ok, message} = JSX.encode(%{subject: "messages", body: body})
+    {:ok, message} = JSX.encode(%{"subject" => "messages", "body" => body})
+    Kernel.spawn(
+      fn ->
+        Clients.select_all()
+          |> Enum.each(
+            fn({key, _}) ->
+              key |> Kernel.to_char_list() |> :erlang.list_to_pid() |> Kernel.send({"messages", body})
+            end
+          )
+      end
+    )
     {:reply, {:text, message}, req, state}
   end
 
   def process("users", body, req, state) do
-    [id, hash] = String.split(
-      body, Application.get_env(:websockets, :separator), parts: 2
-    )
-    case Bcrypt.checkpw(
-      id <> Application.get_env(:websockets, :secret), hash
-    ) do
-      true ->
-        try do
-          {id, _} = Integer.parse(id)
-          {:ok, %{"rows": _rows, "num_rows": 1}} = SQL.query(
-            Repo, "SELECT * FROM api_users WHERE id = $1", [id], []
-          )
-          self
-            |> :erlang.pid_to_list()
-            |> Kernel.to_string()
-            |> Clients.insert(id)
-          {:ok, message} = JSX.encode(%{subject: "users", body: true})
-          {:reply, {:text, message}, req, state}
-        rescue
-          exception ->
-            ExSentry.capture_exception(exception)
-            {:ok, message} = JSX.encode(%{subject: "users", body: false})
-            {:reply, {:text, message}, req, state}
-        end
-      _ ->
-        {:ok, message} = JSX.encode(%{subject: "users", body: false})
-        {:reply, {:text, message}, req, state}
+    [id, hash] = String.split(body, Application.get_env(:websockets, :separator), parts: 2)
+    if Bcrypt.checkpw(id <> Application.get_env(:websockets, :secret), hash) do
+      {id, _} = Integer.parse(id)
+      {:ok, %{rows: _rows, num_rows: 1}} = SQL.query(Repo, "SELECT * FROM api_users WHERE id = $1", [id], [])
+      self |> :erlang.pid_to_list() |> Kernel.to_string() |> Clients.insert(id)
+      {:ok, message} = JSX.encode(%{"subject" => "users", "body" => true})
+      {:reply, {:text, message}, req, state}
+    else
+      {:ok, message} = JSX.encode(%{"subject" => "users", "body" => false})
+      {:reply, {:text, message}, req, state}
     end
   end
 
   def process("users_locations_post", body, req, state) do
-    {:ok, message} = JSX.encode(%{subject: "users_locations_post", body: body})
-    Clients.select_all()
-      |> Enum.each(
-        fn({key, _}) ->
-          key
-            |> Kernel.to_char_list()
-            |> :erlang.list_to_pid()
-            |> Kernel.send({"users_locations_get", body})
-        end
-      )
+    {:ok, message} = JSX.encode(%{"subject" => "users_locations_post", "body" => body})
+    Kernel.spawn(
+      fn ->
+        Clients.select_all()
+          |> Enum.each(
+            fn({key, _}) ->
+              key |> Kernel.to_char_list() |> :erlang.list_to_pid() |> Kernel.send({"users_locations_get", body})
+            end
+          )
+      end
+    )
     {:reply, {:text, message}, req, state}
   end
 
-  def process(_subject, _body, req, state) do
+  def process(subject, body, req, state) do
+    Kernel.spawn(
+      fn -> ExSentry.capture_message("Invalid Contents (#3)", extra: %{"subject" => subject, "body" => body}) end
+    )
     {:ok, req, state}
   end
 end

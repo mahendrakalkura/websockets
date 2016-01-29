@@ -3,8 +3,8 @@ defmodule WebSockets.Clients do
 
   use GenServer
 
-  def start_link(state, opts \\ []) do
-    GenServer.start_link(__MODULE__, state, opts)
+  def start_link(state, options \\ []) do
+    GenServer.start_link(__MODULE__, state, options)
   end
 
   def init([]) do
