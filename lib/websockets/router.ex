@@ -1,12 +1,13 @@
 defmodule WebSockets.Router do
-  @behaviour :cowboy_websocket_handler
+  @moduledoc false
 
-  @moduledoc ""
+  @behaviour :cowboy_websocket_handler
 
   alias Comeonin.Bcrypt, as: Bcrypt
   alias Ecto.Adapters.SQL, as: SQL
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
+  alias WebSockets.Utilities, as: Utilities
 
   require Application
   require Enum
@@ -17,120 +18,187 @@ defmodule WebSockets.Router do
   require String
   require System
 
-  def init(_protocol, _req, _opts) do
+  def init(_protocol, _request, _options) do
     {:upgrade, :protocol, :cowboy_websocket}
   end
 
-  def websocket_init(_protocol, req, _opts) do
-    {:ok, req, :undefined_state}
+  def websocket_init(_protocol, request, _options) do
+    {:ok, request, :undefined_state}
   end
 
-  def websocket_handle({:text, "ping"}, req, state) do
-    {:reply, {:text, "pong"}, req, state}
+  def websocket_handle({:text, "ping"}, request, state) do
+    id = Utilities.get_id(Kernel.self())
+    Kernel.spawn(fn -> Utilities.log("Router", "In", id, "ping") end)
+    Kernel.spawn(fn -> Utilities.log("Router", "Out", id, "pong") end)
+    {:reply, {:text, "pong"}, request, state}
   end
 
-  def websocket_handle({:text, "pong"}, req, state) do
-    {:reply, {:text, "ping"}, req, state}
+  def websocket_handle({:text, "pong"}, request, state) do
+    id = Utilities.get_id(Kernel.self())
+    Kernel.spawn(fn -> Utilities.log("Router", "In", id, "pong") end)
+    Kernel.spawn(fn -> Utilities.log("Router", "Out", id, "ping") end)
+    {:reply, {:text, "ping"}, request, state}
   end
 
-  def websocket_handle({:text, contents}, req, state) do
-    websocket_handle({:text, contents}, JSX.decode(contents), req, state)
+  def websocket_handle({:text, contents}, request, state) do
+    websocket_handle({:text, contents}, JSX.decode(contents), request, state)
   end
 
-  def websocket_handle({:text, _contents}, {:ok, %{"subject" => subject, "body" => body}}, req, state) do
-    try do
-      process(subject, body, req, state)
-    rescue
-      exception ->
-        Kernel.spawn(fn -> ExSentry.capture_exception(exception, extra: %{"subject" => subject, "body" => body}) end)
-        {:ok, req, state}
-    end
+  def websocket_handle({:text, _contents}, {:ok, %{"subject" => subject, "body" => body}}, request, state) do
+    process({subject, body}, request, state)
   end
 
-  def websocket_handle({:text, contents}, {:ok, _}, req, state) do
-    Kernel.spawn(fn -> ExSentry.capture_message("Invalid Contents (#1)", extra: %{"contents" => contents}) end)
-    {:ok, req, state}
-  end
-
-  def websocket_handle({:text, contents}, {:error, reason}, req, state) do
+  def websocket_handle({:text, contents}, {:ok, _}, request, state) do
     Kernel.spawn(
-      fn -> ExSentry.capture_message("Invalid Contents (#2)", extra: %{"contents" => contents, "reason" => reason}) end
+      fn -> ExSentry.capture_message("websocket_handle() - Invalid Contents", extra: %{"contents" => contents}) end
     )
-    {:ok, req, state}
+    {:ok, request, state}
   end
 
-  def websocket_info({"messages", body}, req, state) do
-    {:ok, message} = JSX.encode(%{"subject" => "messages", "body" => body})
-    {:reply, {:text, message}, req, state}
+  def websocket_handle({:text, contents}, {:error, reason}, request, state) do
+    Kernel.spawn(
+      fn ->
+        ExSentry.capture_message(
+          "websocket_handle() - Invalid Contents", extra: %{"contents" => contents, "reason" => reason}
+        )
+      end
+    )
+    {:ok, request, state}
   end
 
-  def websocket_info({"users_locations_get", body}, req, state) do
-    {:ok, message} = JSX.encode(%{"subject" => "users_locations_get", "body" => body})
-    {:reply, {:text, message}, req, state}
+  def websocket_info({subject, body}, request, state) do
+    id = Utilities.get_id(Kernel.self())
+    Kernel.spawn(fn -> Utilities.log("Router", "Out", id, subject) end)
+    {:ok, message} = JSX.encode(%{"subject" => subject, "body" => body})
+    {:reply, {:text, message}, request, state}
   end
 
-  def websocket_info(_contents, req, state) do
-    {:ok, req, state}
+  def websocket_info(contents, request, state) do
+    Kernel.spawn(
+      fn -> ExSentry.capture_message("websocket_info() - Invalid Contents", extra: %{"contents" => contents}) end
+    )
+    {:ok, request, state}
   end
 
-  def websocket_terminate(_reason, _req, _state) do
-    Clients.delete(key: self |> :erlang.pid_to_list() |> Kernel.to_string())
+  def websocket_terminate(reason, _request, _state) do
+    Clients.delete(Kernel.self())
+    Kernel.spawn(fn -> terminate(reason) end)
     :ok
   end
 
-  def process("messages", body, req, state) do
-    {:ok, message} = JSX.encode(%{"subject" => "messages", "body" => body})
+  def process({"messages", body}, request, state) do
+    id = Utilities.get_id(Kernel.self())
+    Kernel.spawn(fn -> Utilities.log("Router", "In", id, "messages") end)
+    Kernel.self() |> Kernel.send({"messages", body})
     Kernel.spawn(
-      fn ->
-        Clients.select_all()
-          |> Enum.each(
-            fn({key, _}) ->
-              key |> Kernel.to_char_list() |> :erlang.list_to_pid() |> Kernel.send({"messages", body})
-            end
-          )
-      end
+      fn -> Clients.select_all() |> Enum.each(fn({key, _}) -> key |> Kernel.send({"messages", body}) end) end
     )
-    {:reply, {:text, message}, req, state}
+    {:ok, request, state}
   end
 
-  def process("users", body, req, state) do
-    case String.split(body, Application.get_env(:websockets, :separator), parts: 2, trim: true) do
-      [id, hash] ->
-        if Bcrypt.checkpw(id <> Application.get_env(:websockets, :secret), hash) do
-          {id, _} = Integer.parse(id)
-          {:ok, %{rows: _rows, num_rows: 1}} = SQL.query(Repo, "SELECT * FROM api_users WHERE id = $1", [id], [])
-          self |> :erlang.pid_to_list() |> Kernel.to_string() |> Clients.insert(id)
-          {:ok, message} = JSX.encode(%{"subject" => "users", "body" => true})
-          {:reply, {:text, message}, req, state}
-        else
-          {:ok, message} = JSX.encode(%{"subject" => "users", "body" => false})
-          {:reply, {:text, message}, req, state}
-        end
+  def process({"users", body}, request, state) do
+    id = Utilities.get_id(Kernel.self())
+    Kernel.spawn(fn -> Utilities.log("Router", "In", id, "users") end)
+    process({:users_1, body}, request, state)
+  end
+
+  def process({:users_1, token}, request, state) do
+    case String.split(token, Application.get_env(:websockets, :separator), parts: 2, trim: true) do
+      [id, hash] -> process({:users_2, id, hash}, request, state)
       _ ->
-        {:ok, message} = JSX.encode(%{"subject" => "users", "body" => false})
-        {:reply, {:text, message}, req, state}
+        Kernel.self() |> Kernel.send({"users", false})
+        {:ok, request, state}
     end
   end
 
-  def process("users_locations_post", body, req, state) do
-    {:ok, message} = JSX.encode(%{"subject" => "users_locations_post", "body" => body})
-    Kernel.spawn(
-      fn ->
-        Clients.select_all()
-          |> Enum.each(
-            fn({key, _}) ->
-              key |> Kernel.to_char_list() |> :erlang.list_to_pid() |> Kernel.send({"users_locations_get", body})
-            end
-          )
-      end
-    )
-    {:reply, {:text, message}, req, state}
+  def process({:users_2, id, hash}, request, state) do
+    if Bcrypt.checkpw(id <> Application.get_env(:websockets, :secret), hash) do
+      process({:users_3, id}, request, state)
+    else
+      Kernel.self() |> Kernel.send({"users", false})
+      {:ok, request, state}
+    end
   end
 
-  def process(subject, body, req, state) do
+  def process({:users_3, id}, request, state) do
+    case Integer.parse(id) do
+      {id, _} -> process({:users_4, id}, request, state)
+      _ ->
+        Kernel.self() |> Kernel.send({"users", false})
+        {:ok, request, state}
+    end
+  end
+
+  def process({:users_4, id}, request, state) do
+    case SQL.query(Repo, "SELECT * FROM api_users WHERE id = $1", [id], []) do
+      {:ok, %{rows: _rows, num_rows: 1}} ->
+        Kernel.self() |> Clients.insert(id)
+        Kernel.self() |> Kernel.send({"users", true})
+        {:ok, request, state}
+      _ ->
+        Kernel.self() |> Kernel.send({"users", false})
+        {:ok, request, state}
+    end
+  end
+
+  def process({"users_locations_post", body}, request, state) do
+    id = Utilities.get_id(Kernel.self())
+    Kernel.spawn(fn -> Utilities.log("Router", "In", id, "users_locations_post") end)
+    Kernel.self() |> Kernel.send({"users_locations_post", body})
     Kernel.spawn(
-      fn -> ExSentry.capture_message("Invalid Contents (#3)", extra: %{"subject" => subject, "body" => body}) end
+      fn ->
+        Clients.select_all() |> Enum.each(fn({key, _}) -> key |> Kernel.send({"users_locations_get", body}) end)
+      end
     )
-    {:ok, req, state}
+    {:ok, request, state}
+  end
+
+  def process({subject, body}, request, state) do
+    Kernel.spawn(
+      fn ->
+        ExSentry.capture_message("process() - Invalid Contents", extra: %{"subject" => subject, "body" => body})
+      end
+    )
+    {:ok, request, state}
+  end
+
+  def terminate({:error, :closed}) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "{:error, :closed}"}) end)
+  end
+
+  def terminate({:error, :badencoding}) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "{:error, :badencoding}"}) end)
+  end
+
+  def terminate({:error, :badframe}) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "{:error, :badframe}"}) end)
+  end
+
+  def terminate({:error, atom}) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "{:error, #{atom}}"}) end)
+  end
+
+  def terminate({:normal, :shutdown}) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "{:normal, :shutdown}"}) end)
+  end
+
+  def terminate({:normal, :timeout}) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "{:normal, :timeout}"}) end)
+  end
+
+  def terminate({:remote, :closed}) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "{:remote, :closed}"}) end)
+  end
+
+  def terminate({:remote, prefix, suffix}) do
+    Kernel.spawn(
+      fn ->
+        ExSentry.capture_message("terminate()", extra: %{"reason" => %{"prefix" => prefix, "suffix" => suffix}})
+      end
+    )
+  end
+
+  def terminate(_) do
+    Kernel.spawn(fn -> ExSentry.capture_message("terminate()", extra: %{"reason" => "_"}) end)
   end
 end
