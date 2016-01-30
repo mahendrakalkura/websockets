@@ -1,6 +1,8 @@
 defmodule WebSockets.Clients do
   @moduledoc ""
 
+  require Kernel
+
   use GenServer
 
   def start_link(state, options \\ []) do
@@ -16,15 +18,15 @@ defmodule WebSockets.Clients do
     :ets.tab2list(:ets)
   end
 
-  def select_one(key: key) do
-    case :ets.match_object(:ets, {key, :"$1"}) do
+  def select_one(key) when Kernel.is_pid(key) do
+    case :ets.match_object(:ets, {key, :_}) do
       [{_, value}] -> {:ok, value}
       [] -> {:error, :not_found}
     end
   end
 
-  def select_one(value: value) do
-    case :ets.match_object(:ets, {:"$1", value}) do
+  def select_one(value) when Kernel.is_integer(value) do
+    case :ets.match_object(:ets, {:_, value}) do
       [{key, _}] -> {:ok, key}
       [] -> {:error, :not_found}
     end
@@ -34,11 +36,11 @@ defmodule WebSockets.Clients do
     :ets.insert(:ets, {key, value})
   end
 
-  def delete(key: key) do
-    :ets.match_delete(:ets, {key, :_})
+  def delete(item) when Kernel.is_pid(item) do
+    :ets.match_delete(:ets, {item, :_})
   end
 
-  def delete(value: value) do
-    :ets.match_delete(:ets, {:_, value})
+  def delete(item) when Kernel.is_bitstring(item) do
+    :ets.match_delete(:ets, {:_, item})
   end
 end
