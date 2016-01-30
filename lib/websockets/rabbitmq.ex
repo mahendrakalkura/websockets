@@ -14,6 +14,7 @@ defmodule WebSockets.RabbitMQ do
   require ExSentry
   require JSX
   require Kernel
+  require Logger
 
   use GenServer
 
@@ -32,6 +33,10 @@ defmodule WebSockets.RabbitMQ do
     {:ok, channel}
   end
 
+  def handle_info({:basic_consume_ok, %{consumer_tag: _consumer_tag}}, channel) do
+    {:noreply, channel}
+  end
+
   def handle_info({:basic_cancel, %{consumer_tag: _consumer_tag}}, channel) do
     {:stop, :normal, channel}
   end
@@ -40,41 +45,26 @@ defmodule WebSockets.RabbitMQ do
     {:noreply, channel}
   end
 
-  def handle_info({:basic_consume_ok, %{consumer_tag: _consumer_tag}}, channel) do
-    {:noreply, channel}
-  end
-
   def handle_info({:basic_deliver, contents, %{delivery_tag: tag, redelivered: redelivered}}, channel) do
-    Kernel.spawn(fn -> consume(channel, tag, redelivered, contents) end)
+    Kernel.spawn(fn -> consume(contents, channel, tag, redelivered) end)
     {:noreply, channel}
   end
 
-  def consume(channel, tag, redelivered, contents) do
-    Kernel.spawn(fn -> consume(channel, tag, redelivered, contents, JSX.decode(contents)) end)
+  def consume(contents, channel, tag, redelivered) do
+    Kernel.spawn(fn -> consume(contents, JSX.decode(contents), channel, tag, redelivered) end)
   end
 
-  def consume(channel, tag, _redelivered, _contents, {:ok, %{"subject" => subject, "body" => body}}) do
-    Kernel.spawn(
-      fn ->
-        try do
-          process(subject, body)
-        rescue
-          exception ->
-            Kernel.spawn(
-              fn -> ExSentry.capture_exception(exception, extra: %{"subject" => subject, "body" => body}) end
-            )
-        end
-      end
-    )
-    Basic.ack(channel, tag)
+  def consume(_contents, {:ok, %{"subject" => subject, "body" => body}}, channel, tag, _redelivered) do
+    Kernel.spawn(fn -> process(subject, body) end)
+    Kernel.spawn(fn -> Basic.ack(channel, tag) end)
   end
 
-  def consume(channel, tag, redelivered, contents, {:ok, _}) do
+  def consume(contents, {:ok, _}, channel, tag, redelivered) do
     Kernel.spawn(fn -> ExSentry.capture_message("Invalid Contents (#1)", extra: %{"contents" => contents}) end)
     Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
   end
 
-  def consume(channel, tag, redelivered, contents, {:error, reason}) do
+  def consume(contents, {:error, reason}, channel, tag, redelivered) do
     Kernel.spawn(
       fn -> ExSentry.capture_message("Invalid Contents (#2)", extra: %{"contents" => contents, "reason" => reason}) end
     )
@@ -82,29 +72,41 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def process("blocks", _body) do
+    Kernel.spawn(fn -> log("In", "blocks") end)
   end
 
   def process("master_tells", _body) do
+    Kernel.spawn(fn -> log("In", "master_tells") end)
   end
 
   def process("messages", _body) do
+    Kernel.spawn(fn -> log("In", "messages") end)
   end
 
   def process("notifications", _body) do
+    Kernel.spawn(fn -> log("In", "notifications") end)
   end
 
   def process("posts", _body) do
+    Kernel.spawn(fn -> log("In", "posts") end)
   end
 
   def process("users", _body) do
+    Kernel.spawn(fn -> log("In", "users") end)
   end
 
   def process("users_locations", _body) do
+    Kernel.spawn(fn -> log("In", "users_locations") end)
   end
 
   def process(subject, body) do
     Kernel.spawn(
       fn -> ExSentry.capture_message("Invalid Contents (#3)", extra: %{"subject" => subject, "body" => body}) end
     )
+  end
+
+  def log(direction, subject) do
+    direction = :io_lib.format("~-3s", [direction])
+    Kernel.spawn(fn -> Logger.info("[RabbitMQ] [#{direction}] #{subject}") end)
   end
 end
