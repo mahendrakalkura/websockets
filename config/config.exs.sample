@@ -8,13 +8,15 @@ config :comeonin,
   :pbkdf2_rounds, 12
 
 config :dogma,
-  override: %{FunctionArity => [max: 5], LineLength => [max_length: 120]}
+  override: %{FunctionArity => [max: 6], LineLength => [max_length: 120]}
 
 config :exsentry,
   dsn: "..."
 
-config :logger,
-  level: :info
+config :logger, :console,
+  format: "[$date $time] [$level$levelpad] $message\n",
+  level: :info,
+  utc_log: true
 
 config :websockets,
   broker: "...",
