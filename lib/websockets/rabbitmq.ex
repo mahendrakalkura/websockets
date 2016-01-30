@@ -60,13 +60,15 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def consume(contents, {:ok, _}, channel, tag, redelivered) do
-    Kernel.spawn(fn -> ExSentry.capture_message("Invalid Contents (#1)", extra: %{"contents" => contents}) end)
+    Kernel.spawn(fn -> ExSentry.capture_message("consume() - Invalid Contents", extra: %{"contents" => contents}) end)
     Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
   end
 
   def consume(contents, {:error, reason}, channel, tag, redelivered) do
     Kernel.spawn(
-      fn -> ExSentry.capture_message("Invalid Contents (#2)", extra: %{"contents" => contents, "reason" => reason}) end
+      fn ->
+        ExSentry.capture_message("consume() - Invalid Contents", extra: %{"contents" => contents, "reason" => reason})
+      end
     )
     Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
   end
@@ -101,7 +103,9 @@ defmodule WebSockets.RabbitMQ do
 
   def process(subject, body) do
     Kernel.spawn(
-      fn -> ExSentry.capture_message("Invalid Contents (#3)", extra: %{"subject" => subject, "body" => body}) end
+      fn ->
+        ExSentry.capture_message("process() - Invalid Contents", extra: %{"subject" => subject, "body" => body})
+      end
     )
   end
 end
