@@ -8,7 +8,7 @@ config :comeonin,
   :pbkdf2_rounds, 12
 
 config :dogma,
-  override: %{FunctionArity => [max: 6], LineLength => [max_length: 120]}
+  override: %{LineLength => [max_length: 120]}
 
 config :exsentry,
   dsn: "..."
