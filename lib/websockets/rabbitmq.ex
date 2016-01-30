@@ -9,12 +9,12 @@ defmodule WebSockets.RabbitMQ do
   alias AMQP.Connection, as: Connection
   alias AMQP.Exchange, as: Exchange
   alias AMQP.Queue, as: Queue
+  alias WebSockets.Utilities, as: Utilities
 
   require Application
   require ExSentry
   require JSX
   require Kernel
-  require Logger
 
   use GenServer
 
@@ -72,41 +72,36 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def process("blocks", _body) do
-    Kernel.spawn(fn -> log("In", "blocks") end)
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "blocks") end)
   end
 
   def process("master_tells", _body) do
-    Kernel.spawn(fn -> log("In", "master_tells") end)
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
   end
 
   def process("messages", _body) do
-    Kernel.spawn(fn -> log("In", "messages") end)
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "messages") end)
   end
 
   def process("notifications", _body) do
-    Kernel.spawn(fn -> log("In", "notifications") end)
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "notifications") end)
   end
 
   def process("posts", _body) do
-    Kernel.spawn(fn -> log("In", "posts") end)
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "posts") end)
   end
 
   def process("users", _body) do
-    Kernel.spawn(fn -> log("In", "users") end)
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users") end)
   end
 
   def process("users_locations", _body) do
-    Kernel.spawn(fn -> log("In", "users_locations") end)
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users_locations") end)
   end
 
   def process(subject, body) do
     Kernel.spawn(
       fn -> ExSentry.capture_message("Invalid Contents (#3)", extra: %{"subject" => subject, "body" => body}) end
     )
-  end
-
-  def log(direction, subject) do
-    direction = :io_lib.format("~-3s", [direction])
-    Kernel.spawn(fn -> Logger.info("[RabbitMQ] [#{direction}] #{subject}") end)
   end
 end
