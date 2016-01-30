@@ -1,5 +1,5 @@
 defmodule WebSockets.Utilities do
-  @moduledoc ""
+  @moduledoc false
 
   require Kernel
   require Logger

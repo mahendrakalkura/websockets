@@ -1,5 +1,5 @@
 defmodule WebSockets.RabbitMQ do
-  @moduledoc ""
+  @moduledoc false
 
   @exchange "api.management.commands.websockets"
   @queue "api.management.commands.websockets"

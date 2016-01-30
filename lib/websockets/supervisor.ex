@@ -1,5 +1,5 @@
 defmodule WebSockets.Supervisor do
-  @moduledoc ""
+  @moduledoc false
 
   alias Supervisor.Spec, as: Spec
   alias WebSockets.Clients, as: Clients

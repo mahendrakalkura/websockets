@@ -1,5 +1,5 @@
 defmodule WebSockets.Mixfile do
-  @moduledoc ""
+  @moduledoc false
 
   use Mix.Project
 

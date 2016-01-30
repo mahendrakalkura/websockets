@@ -1,5 +1,5 @@
 defmodule WebSocketsTest do
-  @moduledoc ""
+  @moduledoc false
 
   alias ExUnit.DocTest, as: DocTest
 

@@ -1,5 +1,5 @@
 defmodule WebSockets.Clients do
-  @moduledoc ""
+  @moduledoc false
 
   require Kernel
 
