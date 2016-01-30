@@ -1,6 +1,8 @@
 defmodule WebSockets.Utilities do
   @moduledoc false
 
+  alias WebSockets.Clients, as: Clients
+
   require Kernel
   require Logger
 
@@ -18,11 +20,11 @@ defmodule WebSockets.Utilities do
     :io_lib.format("~-3s", [string])
   end
 
-  def get_id(integer) when is_integer(integer) do
+  def get_id(integer) when Kernel.is_integer(integer) do
     :io_lib.format("~9B", [integer])
   end
 
-  def get_id(pid) when is_pid(pid) do
+  def get_id(pid) when Kernel.is_pid(pid) do
     case Clients.select_one(pid) do
       {:ok, id} -> id
       _ -> 0
