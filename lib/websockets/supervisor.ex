@@ -12,7 +12,7 @@ defmodule WebSockets.Supervisor do
   use Supervisor
 
   def start_link() do
-    Supervisor.start_link(__MODULE__, [])
+    Supervisor.start_link(__MODULE__, [], [])
   end
 
   def init([]) do
@@ -23,7 +23,7 @@ defmodule WebSockets.Supervisor do
       [{:env, [{:dispatch, :cowboy_router.compile([{:_, [{"/", Router, []}]}])}]}]
     )
     Spec.supervise(
-      [Spec.worker(Clients, [[], []]), Spec.worker(RabbitMQ, []), Spec.worker(Repo, [])], strategy: :one_for_one
+      [Spec.worker(Clients, []), Spec.worker(RabbitMQ, []), Spec.worker(Repo, [])], strategy: :one_for_one
     )
   end
 end
