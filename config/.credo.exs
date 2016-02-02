@@ -43,10 +43,7 @@
         {Credo.Check.Warning.UnusedStringOperation},
         {Credo.Check.Warning.UnusedTupleOperation},
       ],
-      files: %{
-        excluded: [],
-        included: ["lib/", "test/"],
-      },
+      files: %{excluded: [], included: ["lib/", "test/"]},
       name: "default",
     },
   ],
