@@ -41,7 +41,7 @@
         {Credo.Check.Warning.UnusedKeywordOperation},
         {Credo.Check.Warning.UnusedListOperation},
         {Credo.Check.Warning.UnusedStringOperation},
-        {Credo.Check.Warning.UnusedTupleOperation},
+        {Credo.Check.Warning.UnusedTupleOperation}
       ],
       files: %{excluded: [], included: ["lib/", "test/"]},
       name: "default",
