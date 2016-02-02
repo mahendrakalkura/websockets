@@ -1,35 +1,44 @@
 alias Ecto.Adapters.Postgres, as: Postgres
 alias Geo.PostGIS.Extension, as: Extension
+alias Mix.Config, as: Config
 alias WebSockets.Repo, as: Repo
 
 use Mix.Config
 
-config :comeonin,
-  :pbkdf2_rounds, 12
+Config.config(:comeonin, [pbkdf2_rounds: 12])
 
-config :dogma,
-  override: %{LineLength => [max_length: 120]}
+Config.config(:dogma, [override: %{LineLength => [max_length: 120]}])
 
-config :exsentry,
-  dsn: "..."
+Config.config(
+  :exsentry,
+  [dsn: "..."]
+)
 
-config :logger, :console,
-  format: "[$date $time] [$level$levelpad] $message\n",
-  level: :info,
-  utc_log: true
+Config.config(
+  :logger, :console, [format: "[$date $time] [$level$levelpad] $message\n", level: :info, utc_log: true]
+)
 
-config :websockets,
-  broker: "...",
-  hostname: "...",
-  port: ...,
-  secret: "...",
-  separator: "..."
+Config.config(
+  :websockets,
+  [
+    broker: "...",
+    hostname: "...",
+    port: ...,
+    secret: "...",
+    separator: "..."
+  ]
+)
 
-config :websockets, Repo,
-  adapter: Postgres,
-  database: "...",
-  extensions: [{Extension, library: Geo}],
-  hostname: "...",
-  password: "...",
-  port: ...,
-  username: "..."
+Config.config(
+  :websockets,
+  Repo,
+  [
+    adapter: Postgres,
+    database: "...",
+    extensions: [{Extension, library: Geo}],
+    hostname: "...",
+    password: "...",
+    port: ...,
+    username: "..."
+  ]
+)
