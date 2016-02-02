@@ -9,6 +9,8 @@ defmodule WebSockets.RabbitMQ do
   alias AMQP.Connection, as: Connection
   alias AMQP.Exchange, as: Exchange
   alias AMQP.Queue, as: Queue
+  alias Ecto.Adapters.SQL, as: SQL
+  alias WebSockets.Clients, as: Clients
   alias WebSockets.Utilities, as: Utilities
 
   require Application
@@ -22,7 +24,7 @@ defmodule WebSockets.RabbitMQ do
     GenServer.start_link(__MODULE__, [], [])
   end
 
-  def init(_options) do
+  def init([]) do
     {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
     {:ok, channel} = Channel.open(connection)
     Basic.qos(channel, prefetch_count: 1)
@@ -50,12 +52,12 @@ defmodule WebSockets.RabbitMQ do
     {:noreply, channel}
   end
 
-  def consume(contents, channel, tag, redelivered) do
+  def consume(contents, channel, tag, redelivered) when Kernel.is_bitstring(contents) do
     Kernel.spawn(fn -> consume({contents, JSX.decode(contents)}, channel, tag, redelivered) end)
   end
 
   def consume({_contents, {:ok, %{"subject" => subject, "body" => body}}}, channel, tag, _redelivered) do
-    Kernel.spawn(fn -> process(subject, body) end)
+    Kernel.spawn(fn -> process({subject, body}) end)
     Kernel.spawn(fn -> Basic.ack(channel, tag) end)
   end
 
@@ -73,35 +75,49 @@ defmodule WebSockets.RabbitMQ do
     Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
   end
 
-  def process("blocks", _body) do
+  def process({"blocks", body}) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "blocks") end)
+    process({:blocks_1, body})
   end
 
-  def process("master_tells", _body) do
+  def process({:blocks_1, id}) do
+    case SQL.query(Repo, "SELECT user_source_id, user_destination_id FROM api_blocks WHERE id = $1", [id], []) do
+      {:ok, %{rows: rows, num_rows: 1}} ->
+        Kernel.spawn(fn -> process({:blocks_2, rows}) end)
+    end
+  end
+
+  def process({:blocks_2, rows}) do
+    rows |> Enum.each(fn(row) -> Kernel.spawn(fn -> process({:blocks_3, Enum.at(row, 0), Enum.at(row, 1)}) end) end)
+  end
+
+  def process({:blocks_3, user_source_id, user_destination_id}) do
+    case Clients.select_one(user_destination_id) do
+      [{:ok, pid}] -> pid |> Kernel.send({"blocks", user_source_id})
+    end
+  end
+
+  def process({"master_tells", _body}) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
   end
 
-  def process("messages", _body) do
-    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "messages") end)
-  end
-
-  def process("notifications", _body) do
+  def process({"notifications", _body}) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "notifications") end)
   end
 
-  def process("posts", _body) do
+  def process({"posts", _body}) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "posts") end)
   end
 
-  def process("users", _body) do
+  def process({"users", _body}) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users") end)
   end
 
-  def process("users_locations", _body) do
+  def process({"users_locations", _body}) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users_locations") end)
   end
 
-  def process(subject, body) do
+  def process({subject, body}) do
     Kernel.spawn(
       fn ->
         ExSentry.capture_message("process() - Invalid Contents", extra: %{"subject" => subject, "body" => body})
