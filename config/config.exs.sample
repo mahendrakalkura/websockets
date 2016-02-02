@@ -11,12 +11,12 @@ Config.config(:dogma, [override: %{LineLength => [max_length: 120]}])
 
 Config.config(
   :exsentry,
-  [dsn: "..."]
+  [
+    dsn: "..."
+  ]
 )
 
-Config.config(
-  :logger, :console, [format: "[$date $time] [$level$levelpad] $message\n", level: :info, utc_log: true]
-)
+Config.config(:logger, :console, [format: "[$date $time] [$level$levelpad] $message\n", level: :info, utc_log: true])
 
 Config.config(
   :websockets,
@@ -38,6 +38,7 @@ Config.config(
     extensions: [{Extension, library: Geo}],
     hostname: "...",
     password: "...",
+    pool_size: ...,
     port: ...,
     username: "..."
   ]
