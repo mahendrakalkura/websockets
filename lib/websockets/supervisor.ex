@@ -19,11 +19,37 @@ defmodule WebSockets.Supervisor do
     {:ok, _} = :cowboy.start_http(
       :http,
       100,
-      [{:port, Application.get_env(:websockets, :port)}],
-      [{:env, [{:dispatch, :cowboy_router.compile([{:_, [{"/", Router, []}]}])}]}]
+      [
+        {:port, Application.get_env(:websockets, :port)}
+      ],
+      [
+        {
+          :env,
+          [
+            {
+              :dispatch,
+              :cowboy_router.compile(
+                [
+                  {
+                    :_,
+                    [
+                      {"/", Router, []}
+                    ]
+                  }
+                ]
+              )
+            }
+          ]
+        }
+      ]
     )
     Spec.supervise(
-      [Spec.worker(Clients, []), Spec.worker(RabbitMQ, []), Spec.worker(Repo, [])], strategy: :one_for_one
+      [
+        Spec.worker(Clients, []),
+        Spec.worker(RabbitMQ, []),
+        Spec.worker(Repo, [])
+      ],
+      strategy: :one_for_one
     )
   end
 end
