@@ -14,7 +14,6 @@ defmodule WebSockets.RabbitMQ do
   alias WebSockets.Utilities, as: Utilities
 
   require Application
-  require ExSentry
   require JSX
   require Kernel
 
@@ -52,76 +51,117 @@ defmodule WebSockets.RabbitMQ do
     {:noreply, channel}
   end
 
-  def consume(contents, channel, tag, redelivered) when Kernel.is_bitstring(contents) do
-    Kernel.spawn(fn -> consume({contents, JSX.decode(contents)}, channel, tag, redelivered) end)
+  def consume(contents, channel, tag, redelivered) do
+    case JSX.decode(contents) do
+      {:ok, %{"subject" => subject, "body" => body}} ->
+        Kernel.spawn(fn -> process(subject, body) end)
+        Kernel.spawn(fn -> Basic.ack(channel, tag) end)
+      {:ok, _} ->
+        Kernel.spawn(fn -> Utilities.log("consume()", %{"contents" => contents}) end)
+        Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
+      {:error, reason} ->
+        Kernel.spawn(fn -> Utilities.log("consume()", %{"contents" => contents, "reason" => reason}) end)
+        Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
+    end
   end
 
-  def consume({_contents, {:ok, %{"subject" => subject, "body" => body}}}, channel, tag, _redelivered) do
-    Kernel.spawn(fn -> process({subject, body}) end)
-    Kernel.spawn(fn -> Basic.ack(channel, tag) end)
-  end
-
-  def consume({contents, {:ok, _}}, channel, tag, redelivered) do
-    Kernel.spawn(fn -> ExSentry.capture_message("consume() - Invalid Contents", extra: %{"contents" => contents}) end)
-    Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
-  end
-
-  def consume({contents, {:error, reason}}, channel, tag, redelivered) do
-    Kernel.spawn(
-      fn ->
-        ExSentry.capture_message("consume() - Invalid Contents", extra: %{"contents" => contents, "reason" => reason})
-      end
-    )
-    Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
-  end
-
-  def process({"blocks", body}) do
+  def process("blocks", body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "blocks") end)
-    process({:blocks_1, body})
+    blocks_1(body)
   end
 
-  def process({:blocks_1, id}) do
-    case SQL.query(Repo, "SELECT user_source_id, user_destination_id FROM api_blocks WHERE id = $1", [id], []) do
-      {:ok, %{rows: rows, num_rows: 1}} ->
-        Kernel.spawn(fn -> process({:blocks_2, rows}) end)
-    end
-  end
-
-  def process({:blocks_2, rows}) do
-    rows |> Enum.each(fn(row) -> Kernel.spawn(fn -> process({:blocks_3, Enum.at(row, 0), Enum.at(row, 1)}) end) end)
-  end
-
-  def process({:blocks_3, user_source_id, user_destination_id}) do
-    case Clients.select_one(user_destination_id) do
-      [{:ok, pid}] -> pid |> Kernel.send({"blocks", user_source_id})
-    end
-  end
-
-  def process({"master_tells", _body}) do
+  def process("master_tells", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
   end
 
-  def process({"notifications", _body}) do
-    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "notifications") end)
+  def process("messages", _body) do
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
   end
 
-  def process({"posts", _body}) do
+  def process("notifications", body) do
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "notifications") end)
+    notifications_1(body)
+  end
+
+  def process("posts", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "posts") end)
   end
 
-  def process({"users", _body}) do
+  def process("users", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users") end)
   end
 
-  def process({"users_locations", _body}) do
+  def process("users_locations", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users_locations") end)
   end
 
-  def process({subject, body}) do
-    Kernel.spawn(
-      fn ->
-        ExSentry.capture_message("process() - Invalid Contents", extra: %{"subject" => subject, "body" => body})
+  def process(subject, body) do
+    Kernel.spawn(fn -> Utilities.log("process()", %{"subject" => subject, "body" => body}) end)
+  end
+
+  def blocks_1(id) do
+    case SQL.query(Repo, "SELECT user_source_id, user_destination_id FROM api_blocks WHERE id = $1", [id], []) do
+      {:ok, %{rows: rows, num_rows: 1}} -> Kernel.spawn(fn -> blocks_2(rows) end)
+    end
+  end
+
+  def blocks_2(rows) do
+    Enum.each(rows, fn(row) -> Kernel.spawn(fn -> blocks_3(Enum.at(row, 0), Enum.at(row, 1)) end) end)
+  end
+
+  def blocks_3(user_source_id, user_destination_id) do
+    case Clients.select_one(user_destination_id) do
+      [{:ok, pid}] -> Kernel.send(pid, {"blocks", user_source_id})
+    end
+  end
+
+  def notifications_1(id) do
+    case SQL.query(
+      Repo, "SELECT id, user_id, type, contents, status, timestamp FROM api_notifications WHERE id = $1", [id], []
+    ) do
+      {:ok, %{rows: rows, num_rows: 1}} -> Kernel.spawn(fn -> notifications_2(rows) end)
+    end
+  end
+
+  def notifications_2(rows) do
+    Enum.each(
+      rows,
+      fn(row) ->
+        Kernel.spawn(
+          fn ->
+            notifications_3(
+              %{
+                "id" => Enum.at(row, 0),
+                "user_id" => Enum.at(row, 1),
+                "type" => Enum.at(row, 2),
+                "contents" => Enum.at(row, 3),
+                "status" => Enum.at(row, 4),
+                "timestamp" => Enum.at(row, 5)
+              }
+            )
+          end
+        )
       end
     )
+  end
+
+  def notifications_3(instance) do
+    case Clients.select_one(instance.user_id) do
+      [{:ok, pid}] ->
+        Kernel.send(
+          pid,
+          {
+            "blocks",
+            %{
+              "id" => instance.id,
+              "user_id" => instance.user_id,
+              "type" => instance.type,
+              "contents" => instance.contents,
+              "status" => instance.status,
+              "timestamp" => instance.timestamp
+            }
+          }
+        )
+    end
   end
 end
