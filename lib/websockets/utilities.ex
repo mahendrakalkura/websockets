@@ -3,8 +3,13 @@ defmodule WebSockets.Utilities do
 
   alias WebSockets.Clients, as: Clients
 
+  require ExSentry
   require Kernel
   require Logger
+
+  def log(message, extra) do
+    ExSentry.capture_message(message, extra: extra)
+  end
 
   def log(module, direction, id, subject) do
     Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] [#{get_id(id)}] #{subject}")
