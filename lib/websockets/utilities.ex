@@ -7,13 +7,11 @@ defmodule WebSockets.Utilities do
   require Logger
 
   def log(module, direction, id, subject) do
-    Kernel.spawn(
-      fn -> Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] [#{get_id(id)}] #{subject}") end
-    )
+    Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] [#{get_id(id)}] #{subject}")
   end
 
   def log(module, direction, subject) do
-    Kernel.spawn(fn -> Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] #{subject}") end)
+    Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] #{subject}")
   end
 
   def get_direction(string) do
