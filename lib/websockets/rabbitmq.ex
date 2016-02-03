@@ -47,56 +47,56 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def handle_info({:basic_deliver, contents, %{delivery_tag: tag, redelivered: redelivered}}, channel) do
-    Kernel.spawn(fn -> consume(contents, channel, tag, redelivered) end)
+    Kernel.spawn(fn -> info(contents, channel, tag, redelivered) end)
     {:noreply, channel}
   end
 
-  def consume(contents, channel, tag, redelivered) do
+  def info(contents, channel, tag, redelivered) do
     case JSX.decode(contents) do
       {:ok, %{"subject" => subject, "body" => body}} ->
-        Kernel.spawn(fn -> process(subject, body) end)
+        Kernel.spawn(fn -> info(subject, body) end)
         Kernel.spawn(fn -> Basic.ack(channel, tag) end)
       {:ok, _} ->
-        Kernel.spawn(fn -> Utilities.log("consume()", %{"contents" => contents}) end)
+        Kernel.spawn(fn -> Utilities.log("info()", %{"contents" => contents}) end)
         Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
       {:error, reason} ->
-        Kernel.spawn(fn -> Utilities.log("consume()", %{"contents" => contents, "reason" => reason}) end)
+        Kernel.spawn(fn -> Utilities.log("info()", %{"contents" => contents, "reason" => reason}) end)
         Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
     end
   end
 
-  def process("blocks", body) do
+  def info("blocks", body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "blocks") end)
     blocks_1(body)
   end
 
-  def process("master_tells", _body) do
+  def info("master_tells", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
   end
 
-  def process("messages", _body) do
+  def info("messages", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
   end
 
-  def process("notifications", body) do
+  def info("notifications", body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "notifications") end)
     notifications_1(body)
   end
 
-  def process("posts", _body) do
+  def info("posts", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "posts") end)
   end
 
-  def process("users", _body) do
+  def info("users", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users") end)
   end
 
-  def process("users_locations", _body) do
+  def info("users_locations", _body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users_locations") end)
   end
 
-  def process(subject, body) do
-    Kernel.spawn(fn -> Utilities.log("process()", %{"subject" => subject, "body" => body}) end)
+  def info(subject, body) do
+    Kernel.spawn(fn -> Utilities.log("info()", %{"subject" => subject, "body" => body}) end)
   end
 
   def blocks_1(id) do
