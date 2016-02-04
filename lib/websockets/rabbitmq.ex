@@ -16,6 +16,7 @@ defmodule WebSockets.RabbitMQ do
   require Application
   require JSX
   require Kernel
+  require Map
 
   use GenServer
 
@@ -46,32 +47,45 @@ defmodule WebSockets.RabbitMQ do
     {:noreply, channel}
   end
 
-  def handle_info({:basic_deliver, contents, %{delivery_tag: tag, redelivered: redelivered}}, channel) do
-    Kernel.spawn(fn -> info(contents, channel, tag, redelivered) end)
+  def handle_info({:basic_deliver, contents, %{delivery_tag: delivery_tag, redelivered: redelivered}}, channel) do
+    Kernel.spawn(fn -> info(contents, channel, delivery_tag, redelivered) end)
     {:noreply, channel}
   end
 
-  def info(contents, channel, tag, redelivered) do
+  def info(contents, channel, delivery_tag, redelivered) do
     case JSX.decode(contents) do
+      {:ok, %{"subject" => subject, "body" => body, "user_ids" => user_ids}} ->
+        Kernel.spawn(fn -> info(subject, body, user_ids) end)
+        Kernel.spawn(fn -> Basic.ack(channel, delivery_tag) end)
       {:ok, %{"subject" => subject, "body" => body}} ->
         Kernel.spawn(fn -> info(subject, body) end)
-        Kernel.spawn(fn -> Basic.ack(channel, tag) end)
+        Kernel.spawn(fn -> Basic.ack(channel, delivery_tag) end)
       {:ok, _} ->
         Kernel.spawn(fn -> Utilities.log("info()", %{"contents" => contents}) end)
-        Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
+        Kernel.spawn(fn -> Basic.reject(channel, delivery_tag, requeue: not redelivered) end)
       {:error, reason} ->
         Kernel.spawn(fn -> Utilities.log("info()", %{"contents" => contents, "reason" => reason}) end)
-        Kernel.spawn(fn -> Basic.reject(channel, tag, requeue: not redelivered) end)
+        Kernel.spawn(fn -> Basic.reject(channel, delivery_tag, requeue: not redelivered) end)
     end
+  end
+
+  def info("master_tells", body, user_ids) do
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
+    master_tells_1(body, user_ids)
+  end
+
+  def info("posts", body, user_ids) do
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "posts") end)
+    posts_1(body, user_ids)
+  end
+
+  def info(subject, body, user_ids) do
+    Kernel.spawn(fn -> Utilities.log("info()", %{"subject" => subject, "body" => body, "user_ids" => user_ids}) end)
   end
 
   def info("blocks", body) do
     Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "blocks") end)
     blocks_1(body)
-  end
-
-  def info("master_tells", _body) do
-    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
   end
 
   def info("messages", _body) do
@@ -83,12 +97,9 @@ defmodule WebSockets.RabbitMQ do
     notifications_1(body)
   end
 
-  def info("posts", _body) do
-    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "posts") end)
-  end
-
-  def info("users", _body) do
-    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "users") end)
+  def info("profile", body) do
+    Kernel.spawn(fn -> Utilities.log("RabbitMQ", "In", "profile") end)
+    profile_1(body)
   end
 
   def info("users_locations", _body) do
@@ -97,6 +108,26 @@ defmodule WebSockets.RabbitMQ do
 
   def info(subject, body) do
     Kernel.spawn(fn -> Utilities.log("info()", %{"subject" => subject, "body" => body}) end)
+  end
+
+  def master_tells_1(body, user_ids) do
+    Enum.each(user_ids, fn(user_id) -> Kernel.spawn(fn -> master_tells_2(user_id, body) end) end)
+  end
+
+  def master_tells_2(user_id, body) do
+    case Clients.select_one(user_id) do
+      [{:ok, pid}] -> Kernel.send(pid, {"master_tells", body})
+    end
+  end
+
+  def posts_1(body, user_ids) do
+    Enum.each(user_ids, fn(user_id) -> Kernel.spawn(fn -> posts_2(user_id, body) end) end)
+  end
+
+  def posts_2(user_id, body) do
+    case Clients.select_one(user_id) do
+      [{:ok, pid}] -> Kernel.send(pid, {"posts", body})
+    end
   end
 
   def blocks_1(id) do
@@ -162,6 +193,24 @@ defmodule WebSockets.RabbitMQ do
             }
           }
         )
+    end
+  end
+
+  def profile_1(user_destination_id) do
+    case SQL.query(
+      Repo, "SELECT user_source_id FROM api_tellcards WHERE user_destination_id = $1", [user_destination_id], []
+    ) do
+      {:ok, %{rows: rows, num_rows: _}} -> Kernel.spawn(fn -> profile_2(rows, user_destination_id) end)
+    end
+  end
+
+  def profile_2(rows, user_destination_id) do
+    Enum.each(rows, fn(row) -> Kernel.spawn(fn -> profile_3(Enum.at(row, 0), user_destination_id) end) end)
+  end
+
+  def profile_3(user_source_id, user_destination_id) do
+    case Clients.select_one(user_source_id) do
+      [{:ok, pid}] -> Kernel.send(pid, {"profile", user_destination_id})
     end
   end
 end
