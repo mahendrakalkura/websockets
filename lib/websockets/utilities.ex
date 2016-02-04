@@ -24,14 +24,11 @@ defmodule WebSockets.Utilities do
   end
 
   def get_id(integer) when Kernel.is_integer(integer) do
-    :io_lib.format("~9B", [integer])
+     :io_lib.format("~9B", [integer])
   end
 
   def get_id(pid) when Kernel.is_pid(pid) do
-    case Clients.select_one(pid) do
-      {:ok, id} -> id
-      _ -> 0
-    end
+    Clients.select_one(pid)
   end
 
   def get_module(string) do

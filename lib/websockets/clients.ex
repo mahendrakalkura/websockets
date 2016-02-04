@@ -18,18 +18,15 @@ defmodule WebSockets.Clients do
     :ets.tab2list(:ets)
   end
 
-  def select_one(key) when Kernel.is_pid(key) do
+  def select_one(key) do
     case :ets.match_object(:ets, {key, :_}) do
-      [{_, value}] -> {:ok, value}
-      [] -> {:error, :not_found}
+      [{_, value}] -> value
+      [] -> 0
     end
   end
 
-  def select_one(value) when Kernel.is_integer(value) do
-    case :ets.match_object(:ets, {:_, value}) do
-      [{key, _}] -> {:ok, key}
-      [] -> {:error, :not_found}
-    end
+  def select_any(value) do
+    Enum.map(:ets.match_object(:ets, {:_, value}), fn({key, _}) -> key end)
   end
 
   def insert(key, value) do
