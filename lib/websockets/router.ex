@@ -42,7 +42,7 @@ defmodule WebSockets.Router do
   def websocket_handle({:text, contents}, request, state) do
     case JSX.decode(contents) do
       {:ok, %{"subject" => subject, "body" => body}} ->
-        process(subject, body, request, state)
+        handle(subject, body, request, state)
       {:ok, _} ->
         Kernel.spawn(fn -> Utilities.log("websocket_handle()", %{"contents" => contents}) end)
         {:ok, request, state}
@@ -70,24 +70,26 @@ defmodule WebSockets.Router do
     :ok
   end
 
-  def process("messages", _body, _request, _state) do
+  def handle("messages", _body, request, state) do
     id = Utilities.get_id(Kernel.self())
     Kernel.spawn(fn -> Utilities.log("Router", "In", id, "messages") end)
+    {:ok, request, state}
   end
 
-  def process("users", body, request, state) do
+  def handle("users", body, request, state) do
     id = Utilities.get_id(Kernel.self())
     Kernel.spawn(fn -> Utilities.log("Router", "In", id, "users") end)
     users_1(body, request, state)
   end
 
-  def process("users_locations_post", _body, _request, _state) do
+  def handle("users_locations_post", _body, request, state) do
     id = Utilities.get_id(Kernel.self())
     Kernel.spawn(fn -> Utilities.log("Router", "In", id, "users_locations_post") end)
+    {:ok, request, state}
   end
 
-  def process({subject, body}, request, state) do
-    Kernel.spawn(fn -> Utilities.log("process()", %{"subject" => subject, "body" => body}) end)
+  def handle(subject, body, request, state) do
+    Kernel.spawn(fn -> Utilities.log("handle()", %{"subject" => subject, "body" => body}) end)
     {:ok, request, state}
   end
 
