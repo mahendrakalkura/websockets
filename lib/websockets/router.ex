@@ -6,7 +6,6 @@ defmodule WebSockets.Router do
   alias Comeonin.Bcrypt, as: Bcrypt
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
-  alias WebSockets.Repo.User, as: User
   alias WebSockets.Utilities, as: Utilities
 
   require Application
@@ -170,7 +169,7 @@ defmodule WebSockets.Router do
   end
 
   def users_4(id, request, state) do
-    case Repo.get(User, id) do
+    case Repo.get(Repo.User, id) do
       nil ->
         Kernel.send(Kernel.self(), {"users", false})
         {:ok, request, state}
