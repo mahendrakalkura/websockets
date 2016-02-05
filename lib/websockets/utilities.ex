@@ -12,8 +12,8 @@ defmodule WebSockets.Utilities do
   require Kernel
   require Logger
 
-  def log(module, direction, id, subject) do
-    Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] [#{get_id(id)}] #{subject}")
+  def log(module, direction, pid, subject) do
+    Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] [#{get_id(get_id(pid))}] #{subject}")
   end
 
   def log(module, direction, subject) do
