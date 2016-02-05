@@ -3,16 +3,25 @@ defmodule WebSockets.Router do
 
   @behaviour :cowboy_websocket_handler
 
+  alias AMQP.Basic, as: Basic
+  alias AMQP.Channel, as: Channel
+  alias AMQP.Connection, as: Connection
   alias Comeonin.Bcrypt, as: Bcrypt
+  alias ExJsonSchema.Schema, as: Schema
+  alias ExJsonSchema.Validator, as: Validator
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
+  alias WebSockets.Repo.User, as: User
+  alias WebSockets.Repo.UserLocation, as: UserLocation
   alias WebSockets.Utilities, as: Utilities
 
   require Application
   require Integer
   require JSX
   require Kernel
+  require Map
   require String
+  require WebSockets
 
   def init(_protocol, _request, _options) do
     {:upgrade, :protocol, :cowboy_websocket}
@@ -77,9 +86,7 @@ defmodule WebSockets.Router do
   def handle("messages", body, request, state) do
     id = Utilities.get_id(Kernel.self())
     Kernel.spawn(fn() -> Utilities.log("Router", "In", id, "messages") end)
-    Kernel.spawn(fn() -> Enum.each(Clients.select_all(), fn({key, _}) -> Kernel.send(key, {"messages", body}) end) end)
-    # TODO
-    {:ok, request, state}
+    messages_1(id, body, request, state)
   end
 
   def handle("users", body, request, state) do
@@ -91,10 +98,7 @@ defmodule WebSockets.Router do
   def handle("users_locations_post", body, request, state) do
     id = Utilities.get_id(Kernel.self())
     Kernel.spawn(fn() -> Utilities.log("Router", "In", id, "users_locations_post") end)
-    Kernel.spawn(
-      fn() -> Enum.each(Clients.select_all(), fn({key, _}) -> Kernel.send(key, {"users_locations_post", body}) end) end
-    )
-    # TODO
+    users_locations_post_1(id, body, request, state)
     {:ok, request, state}
   end
 
@@ -139,6 +143,17 @@ defmodule WebSockets.Router do
     Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "_"}) end)
   end
 
+  def messages_1(id, _body, request, state) do
+    case id do
+      0 ->
+        Kernel.send(Kernel.self(), {"messages", %{"body" => %{"errors" => "Invalid User"}}})
+        {:ok, request, state}
+      _id ->
+        # TODO
+        {:ok, request, state}
+    end
+  end
+
   def users_1(token, request, state) do
     case String.split(token, Application.get_env(:websockets, :separator), parts: 2, trim: true) do
       [id, hash] ->
@@ -169,13 +184,98 @@ defmodule WebSockets.Router do
   end
 
   def users_4(id, request, state) do
-    case Repo.get(Repo.User, id) do
+    case Repo.get(User, id) do
       nil ->
         Kernel.send(Kernel.self(), {"users", false})
         {:ok, request, state}
       user ->
         Clients.insert(Kernel.self(), user.id)
         Kernel.send(Kernel.self(), {"users", true})
+        {:ok, request, state}
+    end
+  end
+
+  def users_locations_post_1(id, body, request, state) do
+    case id do
+      0 ->
+        Kernel.send(Kernel.self(), {"users_locations", %{"body" => %{"errors" => "Invalid User"}}})
+        {:ok, request, state}
+      id ->
+        users_locations_post_2(id, body, request, state)
+    end
+  end
+
+  def users_locations_post_2(id, body, request, state) do
+    schema = Schema.resolve(%{
+      "properties" => %{
+        "network_id" => %{"type" => "integer"},
+        "tellzone_id" => %{"type" => "integer"},
+        "location" => %{"type" => "string"},
+        "point" => %{
+          "properties" => %{"longitude" => %{"type" => "number"}, "latitude" => %{"type" => "number"}},
+          "required" => ["longitude", "latitude"],
+          "type" => "object"
+        },
+        "accuracies_horizontal" => %{"type" => "number"},
+        "accuracies_vertical" => %{"type" => "number"},
+        "bearing" => %{"type" => "integer"},
+        "is_casting" => %{"type" => "boolean"}
+      },
+      "required" => ["point"],
+      "type" => "object"
+    })
+    case Validator.validate(schema, body) do
+      {:error, errors} ->
+        Kernel.send(Kernel.self(), {"users_locations", %{"body" => %{"errors" => errors}}})
+        {:ok, request, state}
+      :ok ->
+        users_locations_post_3(id, body, request, state)
+    end
+  end
+
+  def users_locations_post_3(id, body, request, state) do
+    changeset = UserLocation.changeset(
+      %UserLocation{}, Map.merge(body, %{"user_id" => id, "point" => Utilities.get_point(body["point"])})
+    )
+    case changeset.valid? do
+      false ->
+        Kernel.spawn(
+          fn() ->
+            Utilities.log(
+              "users_locations_post_2()",
+              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+            )
+          end
+        )
+        Kernel.send(Kernel.self(), {"users_locations", %{"body" => %{"errors" => changeset.errors}}})
+        {:ok, request, state}
+      _ ->
+        users_locations_post_4(changeset, request, state)
+    end
+  end
+
+  def users_locations_post_4(changeset, request, state) do
+    case Repo.insert(changeset) do
+      {:ok, user_location} ->
+        {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
+        {:ok, channel} = Channel.open(connection)
+        Basic.publish(
+          channel,
+          WebSockets.get_exchange(),
+          WebSockets.get_routing_key(),
+          "{\"subject\":\"users_locations\",\"body\":\"#{user_location.id}\"}"
+        )
+        {:ok, request, state}
+      {:error, changeset} ->
+        Kernel.spawn(
+          fn() ->
+            Utilities.log(
+              "users_locations_post_3()",
+              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+            )
+          end
+        )
+        Kernel.send(Kernel.self(), {"users_locations", %{"body" => %{"errors" => "Invalid Body"}}})
         {:ok, request, state}
     end
   end

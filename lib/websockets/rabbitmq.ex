@@ -1,9 +1,6 @@
 defmodule WebSockets.RabbitMQ do
   @moduledoc false
 
-  @exchange "api.management.commands.websockets"
-  @queue "api.management.commands.websockets"
-
   alias AMQP.Basic, as: Basic
   alias AMQP.Channel, as: Channel
   alias AMQP.Connection, as: Connection
@@ -12,6 +9,11 @@ defmodule WebSockets.RabbitMQ do
   alias Ecto.Query, as: Query
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
+  alias WebSockets.Repo.Block, as: Block
+  alias WebSockets.Repo.Message, as: Message
+  alias WebSockets.Repo.Notification, as: Notification
+  alias WebSockets.Repo.Tellcard, as: Tellcard
+  alias WebSockets.Repo.UserLocation, as: UserLocation
   alias WebSockets.Utilities, as: Utilities
 
   require Application
@@ -19,6 +21,7 @@ defmodule WebSockets.RabbitMQ do
   require JSX
   require Kernel
   require List
+  require WebSockets
 
   use GenServer
 
@@ -30,10 +33,10 @@ defmodule WebSockets.RabbitMQ do
     {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
     {:ok, channel} = Channel.open(connection)
     Basic.qos(channel, prefetch_count: 1)
-    Exchange.direct(channel, @exchange, durable: true)
-    Queue.declare(channel, @queue, durable: true)
-    Queue.bind(channel, @queue, @exchange)
-    {:ok, _} = Basic.consume(channel, @queue)
+    Exchange.direct(channel, WebSockets.get_exchange(), durable: true)
+    Queue.declare(channel, WebSockets.get_queue(), durable: true)
+    Queue.bind(channel, WebSockets.get_queue(), WebSockets.get_exchange())
+    {:ok, _} = Basic.consume(channel, WebSockets.get_queue())
     {:ok, channel}
   end
 
@@ -143,7 +146,7 @@ defmodule WebSockets.RabbitMQ do
   def messages_1(id) do
     Kernel.spawn(
       fn() ->
-        Repo.Message
+        Message
         |> Query.from()
         |> Query.where(id: ^id)
         |> Query.preload([
@@ -200,7 +203,7 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def blocks_1(id) do
-    Kernel.spawn(fn() -> blocks_2(Repo.get!(Repo.Block, id)) end)
+    Kernel.spawn(fn() -> blocks_2(Repo.get!(Block, id)) end)
   end
 
   def blocks_2(block) do
@@ -208,7 +211,7 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def notifications_1(id) do
-    Kernel.spawn(fn() -> notifications_2(Repo.get!(Repo.Notification, id)) end)
+    Kernel.spawn(fn() -> notifications_2(Repo.get!(Notification, id)) end)
   end
 
   def notifications_2(notification) do
@@ -217,7 +220,7 @@ defmodule WebSockets.RabbitMQ do
 
   def profile_1(user_destination_id) do
     Enum.each(
-      Repo.all(Repo.Tellcard, user_destination_id: user_destination_id),
+      Repo.all(Tellcard, user_destination_id: user_destination_id),
       fn(tellcard) -> Kernel.spawn(fn() -> profile_2(tellcard) end) end
     )
   end
@@ -230,13 +233,13 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def users_locations_1(id) do
-    Kernel.spawn(fn() -> users_locations_2(Repo.get!(Repo.UserLocation, id)) end)
+    Kernel.spawn(fn() -> users_locations_2(Repo.get!(UserLocation, id)) end)
   end
 
   def users_locations_2(user_location) do
     Kernel.spawn(
       fn() ->
-        users_locations = Repo.UserLocation
+        users_locations = UserLocation
         |> Query.from()
         |> Query.where(user_id: ^user_location.user_id)
         |> Query.order_by(desc: :id)

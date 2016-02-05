@@ -1,6 +1,7 @@
 defmodule WebSockets.Utilities do
   @moduledoc false
 
+  alias Geo.WKT, as: WKT
   alias GeoPotion.Distance, as: Distance
   alias GeoPotion.Vector, as: Vector
   alias WebSockets.Clients, as: Clients
@@ -41,5 +42,13 @@ defmodule WebSockets.Utilities do
 
   def get_module(string) do
     :io_lib.format("~-8s", [string])
+  end
+
+  def get_point(%{"longitude" => longitude, "latitude" => latitude}) do
+    WKT.decode("SRID=4326;POINT(#{longitude} #{latitude})")
+  end
+
+  def get_point(_) do
+    nil
   end
 end
