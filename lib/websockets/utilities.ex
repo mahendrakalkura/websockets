@@ -27,10 +27,8 @@ defmodule WebSockets.Utilities do
     :io_lib.format("~-3s", [string])
   end
 
-  def get_distance(one, two) do
-    {a, b} = one.point.coordinates
-    {c, d} = two.point.coordinates
-    Distance.to_ft(Vector.calculate(%{longitude: a, latitude: b}, %{longitude: c, latitude: d}))
+  def get_distance({a, b}, {c, d}) do
+    Distance.to_ft(Vector.calculate(%{longitude: a, latitude: b}, %{longitude: c, latitude: d}).distance).value
   end
 
   def get_id(integer) when Kernel.is_integer(integer) do

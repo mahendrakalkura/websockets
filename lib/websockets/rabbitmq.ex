@@ -263,7 +263,9 @@ defmodule WebSockets.RabbitMQ do
 
   def users_locations_5(users_locations) when Kernel.length(users_locations) === 2 do
     Kernel.spawn(fn() -> users_locations_6(Enum.at(users_locations, 0)) end)
-    if Utilities.get_distance(Enum.at(users_locations, 0), Enum.at(users_locations, 1)) > 300.00 do
+    {a, b} = Enum.at(users_locations, 0).point.coordinates
+    {c, d} = Enum.at(users_locations, 1).point.coordinates
+    if Utilities.get_distance({a, b}, {c, d}) > 300.00 do
       Kernel.spawn(fn() -> users_locations_6(Enum.at(users_locations, 1)) end)
     end
   end
