@@ -2,6 +2,152 @@ defmodule WebSockets.Repo do
   @moduledoc false
 
   use Ecto.Repo, otp_app: :websockets
+
+  def get_master_tell(master_tell) do
+    case master_tell do
+      nil -> nil
+      master_tell ->
+        %{
+          "id" => master_tell.id,
+          "created_by_id" => master_tell.created_by_id,
+          "owned_by_id" => master_tell.owned_by_id,
+          "contents" => master_tell.contents,
+          "position" => master_tell.position,
+          "is_visible" => master_tell.is_visible,
+          "inserted_at" => master_tell.inserted_at,
+          "updated_at" => master_tell.updated_at
+        }
+    end
+  end
+
+  def get_message(message) do
+    case message do
+      nil -> nil
+      message ->
+        %{
+          "id" => message.id,
+          "user_source_is_hidden" => message.user_source_is_hidden,
+          "user_source_id" => message.user_source_id,
+          "user_source" => get_user(message.user_source),
+          "user_destination_is_hidden" => message.user_destination_is_hidden,
+          "user_destination_id" => message.user_destination_id,
+          "user_destination" => get_user(message.user_destination),
+          "master_tell_id" => message.master_tell_id,
+          "master_tell" => get_master_tell(message.master_tell),
+          "user_status_id" => message.user_status_id,
+          "user_status" => get_user_status(message.user_status),
+          "post" => get_post(message.post),
+          "post_id" => message.post_id,
+          "type" => message.type,
+          "contents" => message.contents,
+          "status" => message.status,
+          "inserted_at" => message.inserted_at,
+          "updated_at" => message.inserted_at,
+          "attachments" => Enum.map(
+            message.attachments,
+            fn(attachment) ->
+              %{
+                "id" => attachment.id,
+                "string" => attachment.string,
+                "position" => attachment.position
+              }
+            end
+          ),
+        }
+    end
+  end
+
+  def get_notification(notification) do
+    case notification do
+      nil -> nil
+      notification ->
+        %{
+          "id" => notification.id,
+          "user_id" => notification.user_id,
+          "type" => notification.type,
+          "contents" => notification.contents,
+          "status" => notification.status,
+          "timestamp" => notification.timestamp
+        }
+    end
+  end
+
+  def get_post(post) do
+    case post do
+      nil -> nil
+      post ->
+        %{
+          "id" => post.id,
+          "user_id" => post.user_id,
+          "tellzones_id" => post.tellzones_id,
+          "category_id" => post.category_id,
+          "title" => post.title,
+          "contents" => post.contents,
+          "inserted_at" => post.inserted_at,
+          "updated_at" => post.updated_at,
+          "expired_at" => post.expired_at,
+          "attachments" => Enum.map(
+            post.attachments,
+            fn(attachment) ->
+              %{
+                "id" => attachment.id,
+                "type" => attachment.type,
+                "string_original" => attachment.string_original,
+                "string_preview" => attachment.string_preview,
+                "position" => attachment.position,
+                "inserted_at" => attachment.inserted_at,
+                "updated_at" => attachment.updated_at
+              }
+            end
+          )
+        }
+    end
+  end
+
+  def get_user(user) do
+    case user do
+      nil -> nil
+      user ->
+        %{
+          "id" => user.id,
+          "email" => user.email,
+          "photo_original" => user.photo_original,
+          "photo_preview" => user.photo_preview,
+          "first_name" => user.first_name,
+          "last_name" => user.last_name,
+          "date_of_birth" => user.date_of_birth,
+          "gender" => user.gender,
+          "location" => user.location,
+          "description" => user.description,
+          "phone" => user.phone
+        }
+    end
+  end
+
+  def get_user_status(user_status) do
+    case user_status do
+      nil -> nil
+      user_status ->
+        %{
+          "id" => user_status.id,
+          "string" => user_status.string,
+          "title" => user_status.title,
+          "url" => user_status.url,
+          "notes" => user_status.notes,
+          "attachments" => Enum.map(
+            user_status.attachments,
+            fn(attachment) ->
+              %{
+                "id" => attachment.id,
+                "string_original" => attachment.string_original,
+                "string_preview" => attachment.string_preview,
+                "position" => attachment.position
+              }
+            end
+          )
+        }
+    end
+  end
 end
 
 defmodule WebSockets.Repo.Block do
@@ -15,8 +161,8 @@ defmodule WebSockets.Repo.Block do
     "api_blocks",
     do: (
       Schema.field(:timestamp, Ecto.DateTime)
-      Schema.belongs_to(:user_source, User)
-      Schema.belongs_to(:user_destination, User)
+      Schema.belongs_to(:user_source, WebSockets.Repo.User)
+      Schema.belongs_to(:user_destination, WebSockets.Repo.User)
     )
   )
 end
@@ -51,8 +197,8 @@ defmodule WebSockets.Repo.MasterTell do
       Schema.field(:is_visible, :boolean)
       Schema.field(:inserted_at, Ecto.DateTime)
       Schema.field(:updated_at, Ecto.DateTime)
-      Schema.belongs_to(:created_by, User)
-      Schema.belongs_to(:owned_by, User)
+      Schema.belongs_to(:created_by, WebSockets.Repo.User)
+      Schema.belongs_to(:owned_by, WebSockets.Repo.User)
     )
   )
 end
@@ -76,11 +222,11 @@ defmodule WebSockets.Repo.Message do
       Schema.field(:inserted_at, Ecto.DateTime)
       Schema.field(:updated_at, Ecto.DateTime)
 
-      Schema.belongs_to(:user_destination, User)
-      Schema.belongs_to(:user_source, User)
-      Schema.belongs_to(:user_status, UserStatus)
-      Schema.belongs_to(:master_tell, MasterTell)
-      Schema.belongs_to(:post, Post)
+      Schema.belongs_to(:user_destination, WebSockets.Repo.User)
+      Schema.belongs_to(:user_source, WebSockets.Repo.User)
+      Schema.belongs_to(:user_status, WebSockets.Repo.UserStatus)
+      Schema.belongs_to(:master_tell, WebSockets.Repo.MasterTell)
+      Schema.belongs_to(:post, WebSockets.Repo.Post)
     )
   )
 end
@@ -97,7 +243,7 @@ defmodule WebSockets.Repo.MessageAttachment do
     do: (
       Schema.field(:string, :string)
       Schema.field(:position, :integer)
-      Schema.belongs_to(:message, Message)
+      Schema.belongs_to(:message, WebSockets.Repo.Message)
     )
   )
 end
@@ -113,7 +259,7 @@ defmodule WebSockets.Repo.Network do
     "api_networks",
     do: (
       Schema.field(:name, :string)
-      Schema.belongs_to(:user, User)
+      Schema.belongs_to(:user, WebSockets.Repo.User)
     )
   )
 end
@@ -128,8 +274,8 @@ defmodule WebSockets.Repo.NetworkTellzones do
   Schema.schema(
     "api_networks_tellzones",
     do: (
-      Schema.belongs_to(:network, Network)
-      Schema.belongs_to(:tellzone, Tellzone)
+      Schema.belongs_to(:network, WebSockets.Repo.Network)
+      Schema.belongs_to(:tellzone, WebSockets.Repo.Tellzone)
     )
   )
 end
@@ -148,7 +294,7 @@ defmodule WebSockets.Repo.Notification do
       Schema.field(:contents, :map)
       Schema.field(:status, :string)
       Schema.field(:timestamp, Ecto.DateTime)
-      Schema.belongs_to(:user, User)
+      Schema.belongs_to(:user, WebSockets.Repo.User)
     )
   )
 end
@@ -168,8 +314,8 @@ defmodule WebSockets.Repo.Post do
       Schema.field(:inserted_at, Ecto.DateTime)
       Schema.field(:updated_at, Ecto.DateTime)
       Schema.field(:expired_at, Ecto.DateTime)
-      Schema.belongs_to(:user, User)
-      Schema.belongs_to(:category, Category)
+      Schema.belongs_to(:user, WebSockets.Repo.User)
+      Schema.belongs_to(:category, WebSockets.Repo.Category)
     )
   )
 end
@@ -187,10 +333,10 @@ defmodule WebSockets.Repo.Tellcard do
       Schema.field(:location, :string)
       Schema.field(:viewed_at, Ecto.DateTime)
       Schema.field(:saved_at, Ecto.DateTime)
-      Schema.belongs_to(:user_source, User)
-      Schema.belongs_to(:user_destination, User)
-      Schema.belongs_to(:network, Network)
-      Schema.belongs_to(:tellzone, Tellzone)
+      Schema.belongs_to(:user_source, WebSockets.Repo.User)
+      Schema.belongs_to(:user_destination, WebSockets.Repo.User)
+      Schema.belongs_to(:network, WebSockets.Repo.Network)
+      Schema.belongs_to(:tellzone, WebSockets.Repo.Tellzone)
     )
   )
 end
@@ -218,7 +364,7 @@ defmodule WebSockets.Repo.Tellzone do
       Schema.field(:updated_at, Ecto.DateTime)
       Schema.field(:started_at, Ecto.DateTime)
       Schema.field(:ended_at, Ecto.DateTime)
-      Schema.belongs_to(:user, User)
+      Schema.belongs_to(:user, WebSockets.Repo.User)
     )
   )
 end
@@ -247,7 +393,8 @@ defmodule WebSockets.Repo.User do
       Schema.field(:is_signed_in, :boolean)
       Schema.field(:inserted_at, Ecto.DateTime)
       Schema.field(:updated_at, Ecto.DateTime)
-      Schema.belongs_to(:tellzone, Tellzone)
+      Schema.belongs_to(:tellzone, WebSockets.Repo.Tellzone)
+      Schema.has_many(:settings, WebSockets.Repo.UserSettings)
     )
   )
 end
@@ -269,9 +416,9 @@ defmodule WebSockets.Repo.UserLocation do
       Schema.field(:bearing, :integer)
       Schema.field(:is_casting, :boolean)
       Schema.field(:timestamp, Ecto.DateTime)
-      Schema.belongs_to(:user, User)
-      Schema.belongs_to(:network, Network)
-      Schema.belongs_to(:tellzone, Tellzone)
+      Schema.belongs_to(:user, WebSockets.Repo.User)
+      Schema.belongs_to(:network, WebSockets.Repo.Network)
+      Schema.belongs_to(:tellzone, WebSockets.Repo.Tellzone)
     )
   )
 end
@@ -290,7 +437,7 @@ defmodule WebSockets.Repo.UserSettings do
       Schema.field(:value, :string)
       Schema.field(:inserted_at, Ecto.DateTime)
       Schema.field(:updated_at, Ecto.DateTime)
-      Schema.belongs_to(:user, User)
+      Schema.belongs_to(:user, WebSockets.Repo.User)
     )
   )
 end
@@ -309,7 +456,8 @@ defmodule WebSockets.Repo.UserStatus do
       Schema.field(:title, :string)
       Schema.field(:url, :string)
       Schema.field(:notes, :string)
-      Schema.belongs_to(:user, User)
+      Schema.belongs_to(:user, WebSockets.Repo.User)
+      Schema.has_many(:attachments, WebSockets.Repo.UserStatusAttachments)
     )
   )
 end
@@ -327,7 +475,7 @@ defmodule WebSockets.Repo.UserStatusAttachments do
       Schema.field(:string_original, :string)
       Schema.field(:string_preview, :string)
       Schema.field(:position, :integer)
-      Schema.belongs_to(:user_status, UserStatus)
+      Schema.belongs_to(:user_status, WebSockets.Repo.UserStatus)
     )
   )
 end
