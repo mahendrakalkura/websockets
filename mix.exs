@@ -35,6 +35,7 @@ defmodule WebSockets.Mixfile do
       {:exjsx, "3.2.0"},
       {:exsentry, "0.2.1"},
       {:geo, "1.0.0"},
+      {:poison, "1.5.2"},
       {:postgrex, "0.11.0"},
       {:timex, "1.0.0"},
     ]
