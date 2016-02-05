@@ -9,11 +9,13 @@ defmodule WebSockets.RabbitMQ do
   alias AMQP.Connection, as: Connection
   alias AMQP.Exchange, as: Exchange
   alias AMQP.Queue, as: Queue
+  alias Ecto.Query, as: Query
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
   alias WebSockets.Utilities, as: Utilities
 
   require Application
+  require Ecto.Query
   require JSX
   require Kernel
   require List
@@ -59,7 +61,7 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def handle_info(%{"args" => args}) do
-    Kernel.spawn(fn() -> handle_info(List.first(args[0])) end)
+    Kernel.spawn(fn() -> handle_info(List.first(args)) end)
   end
 
   def handle_info(%{"subject" => subject, "body" => body, "action" => action, "users" => users}) do
@@ -110,9 +112,9 @@ defmodule WebSockets.RabbitMQ do
     Kernel.spawn(fn() -> blocks_1(body) end)
   end
 
-  def info("messages", _) do
+  def info("messages", body) do
     Kernel.spawn(fn() -> Utilities.log("RabbitMQ", "In", "master_tells") end)
-    # TODO
+    Kernel.spawn(fn() -> messages_1(body) end)
   end
 
   def info("notifications", body) do
@@ -138,9 +140,44 @@ defmodule WebSockets.RabbitMQ do
     Enum.each(users, fn(user) -> Kernel.spawn(fn() -> messages_2(body, action, user) end) end)
   end
 
+  def messages_1(id) do
+    Kernel.spawn(
+      fn() ->
+        Repo.Message
+        |> Query.from()
+        |> Query.where(id: ^id)
+        |> Query.preload([
+          :master_tell,
+          :post,
+          :attachments,
+          user_source: :settings,
+          user_destination: :settings,
+          user_status: :attachments
+        ])
+        |> Repo.one()
+        |> messages_2()
+      end
+    )
+  end
+
   def messages_2(body, action, user) do
     Enum.each(
       Clients.select_any(user), fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"messages", body, action}) end) end
+    )
+  end
+
+  def messages_2(message) do
+    Kernel.spawn(
+      Enum.each(
+        Clients.select_any(message.user_source_id),
+        fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"messages", Repo.get_message(message)}) end) end
+      )
+    )
+    Kernel.spawn(
+      Enum.each(
+        Clients.select_any(message.user_destination_id),
+        fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"messages", Repo.get_message(message)}) end) end
+      )
     )
   end
 
@@ -163,7 +200,7 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def blocks_1(id) do
-    Kernel.spawn(fn() -> blocks_2(Repo.get!(Block, id)) end)
+    Kernel.spawn(fn() -> blocks_2(Repo.get!(Repo.Block, id)) end)
   end
 
   def blocks_2(block) do
@@ -171,29 +208,16 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def notifications_1(id) do
-    Kernel.spawn(fn() -> notifications_2(Repo.get!(Notification, id)) end)
+    Kernel.spawn(fn() -> notifications_2(Repo.get!(Repo.Notification, id)) end)
   end
 
   def notifications_2(notification) do
-    Kernel.send(
-      Clients.select_any(notification.user_id),
-      {
-        "blocks",
-        %{
-          "id" => notification.id,
-          "user_id" => notification.user_id,
-          "type" => notification.type,
-          "contents" => notification.contents,
-          "status" => notification.status,
-          "timestamp" => notification.timestamp
-        }
-      }
-    )
+    Kernel.send(Clients.select_any(notification.user_id), {"blocks", Repo.get_notification(notification)})
   end
 
   def profile_1(user_destination_id) do
     Enum.each(
-      Repo.all(Tellcard, user_destination_id: user_destination_id),
+      Repo.all(Repo.Tellcard, user_destination_id: user_destination_id),
       fn(tellcard) -> Kernel.spawn(fn() -> profile_2(tellcard) end) end
     )
   end
