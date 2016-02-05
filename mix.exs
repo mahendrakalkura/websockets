@@ -12,6 +12,7 @@ defmodule WebSockets.Mixfile do
         :credo,
         :dogma,
         :ecto,
+        :ex_json_schema,
         :exjsx,
         :exsentry,
         :geo,
@@ -19,7 +20,7 @@ defmodule WebSockets.Mixfile do
         :logger,
         :postgrex,
         :ranch,
-        :tzdata,
+        :tzdata
       ],
       mod: {WebSockets, []},
     ]
@@ -33,13 +34,14 @@ defmodule WebSockets.Mixfile do
       {:credo, "0.3.0-dev"},
       {:dogma, "0.0.11"},
       {:ecto, "1.1.3"},
+      {:ex_json_schema, "0.3.1"},
       {:exjsx, "3.2.0"},
       {:exsentry, "0.2.1"},
       {:geo, "1.0.0"},
       {:geopotion, github: "TattdCodeMonkey/geopotion"},
       {:poison, "1.5.2"},
       {:postgrex, "0.11.0"},
-      {:timex, "1.0.0"},
+      {:timex, "1.0.0"}
     ]
   end
 
