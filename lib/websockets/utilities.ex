@@ -7,16 +7,16 @@ defmodule WebSockets.Utilities do
   require Kernel
   require Logger
 
-  def log(message, extra) do
-    ExSentry.capture_message(message, extra: extra)
-  end
-
   def log(module, direction, id, subject) do
     Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] [#{get_id(id)}] #{subject}")
   end
 
   def log(module, direction, subject) do
     Logger.info("[#{get_module(module)}] [#{get_direction(direction)}] #{subject}")
+  end
+
+  def log(message, extra) do
+    ExSentry.capture_message(message, extra: extra)
   end
 
   def get_direction(string) do
