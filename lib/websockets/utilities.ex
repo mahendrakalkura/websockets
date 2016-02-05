@@ -1,9 +1,13 @@
 defmodule WebSockets.Utilities do
   @moduledoc false
 
+  alias GeoPotion.Distance, as: Distance
+  alias GeoPotion.Vector, as: Vector
   alias WebSockets.Clients, as: Clients
 
   require ExSentry
+  require GeoPotion.Distance
+  require GeoPotion.Vector
   require Kernel
   require Logger
 
@@ -21,6 +25,12 @@ defmodule WebSockets.Utilities do
 
   def get_direction(string) do
     :io_lib.format("~-3s", [string])
+  end
+
+  def get_distance(one, two) do
+    {a, b} = one.point.coordinates
+    {c, d} = two.point.coordinates
+    Distance.to_ft(Vector.calculate(%{longitude: a, latitude: b}, %{longitude: c, latitude: d}))
   end
 
   def get_id(integer) when Kernel.is_integer(integer) do
