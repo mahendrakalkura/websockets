@@ -127,9 +127,9 @@ defmodule WebSockets.RabbitMQ do
     Kernel.spawn(fn() -> profile_1(body) end)
   end
 
-  def info("users_locations", _) do
+  def info("users_locations", body) do
     Kernel.spawn(fn() -> Utilities.log("RabbitMQ", "In", "users_locations") end)
-    # TODO
+    Kernel.spawn(fn() -> users_locations_1(body) end)
   end
 
   def info(subject, body) do
@@ -227,5 +227,48 @@ defmodule WebSockets.RabbitMQ do
       Clients.select_any(tellcard.user_source_id),
       fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"profile", tellcard.user_destination_id}) end) end
     )
+  end
+
+  def users_locations_1(id) do
+    Kernel.spawn(fn() -> users_locations_2(Repo.get!(Repo.UserLocation, id)) end)
+  end
+
+  def users_locations_2(user_location) do
+    Kernel.spawn(
+      fn() ->
+        users_locations = Repo.UserLocation
+        |> Query.from()
+        |> Query.where(user_id: ^user_location.user_id)
+        |> Query.order_by(desc: :id)
+        |> Query.limit(2)
+        |> Repo.all()
+        users_locations_3(users_locations)
+        users_locations_4(users_locations)
+        users_locations_5(users_locations)
+      end
+    )
+  end
+
+  def users_locations_3(_users_locations) do
+    # TODO
+  end
+
+  def users_locations_4(_users_locations) do
+    # TODO
+  end
+
+  def users_locations_5(users_locations) when Kernel.length(users_locations) === 1 do
+    Kernel.spawn(fn() -> users_locations_6(Enum.at(users_locations, 0)) end)
+  end
+
+  def users_locations_5(users_locations) when Kernel.length(users_locations) === 2 do
+    Kernel.spawn(fn() -> users_locations_6(Enum.at(users_locations, 0)) end)
+    if Utilities.get_distance(Enum.at(users_locations, 0), Enum.at(users_locations, 1)) > 300.00 do
+      Kernel.spawn(fn() -> users_locations_6(Enum.at(users_locations, 1)) end)
+    end
+  end
+
+  def users_locations_6(_user_location) do
+    # TODO
   end
 end
