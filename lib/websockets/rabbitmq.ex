@@ -11,6 +11,7 @@ defmodule WebSockets.RabbitMQ do
   alias AMQP.Queue, as: Queue
   alias Ecto.Adapters.SQL, as: SQL
   alias WebSockets.Clients, as: Clients
+  alias WebSockets.Repo, as: Repo
   alias WebSockets.Utilities, as: Utilities
 
   require Application
