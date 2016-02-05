@@ -16,6 +16,7 @@ defmodule WebSockets.RabbitMQ do
   require Application
   require JSX
   require Kernel
+  require List
 
   use GenServer
 
@@ -34,37 +35,47 @@ defmodule WebSockets.RabbitMQ do
     {:ok, channel}
   end
 
-  def handle_info({:basic_consume_ok, %{consumer_tag: _consumer_tag}}, channel) do
+  def handle_info({:basic_consume_ok, %{consumer_tag: _}}, channel) do
     {:noreply, channel}
   end
 
-  def handle_info({:basic_cancel, %{consumer_tag: _consumer_tag}}, channel) do
+  def handle_info({:basic_cancel, %{consumer_tag: _}}, channel) do
     {:stop, :normal, channel}
   end
 
-  def handle_info({:basic_cancel_ok, %{consumer_tag: _consumer_tag}}, channel) do
+  def handle_info({:basic_cancel_ok, %{consumer_tag: _}}, channel) do
     {:noreply, channel}
   end
 
-  def handle_info({:basic_deliver, contents, %{delivery_tag: delivery_tag, redelivered: redelivered}}, channel) do
+  def handle_info({:basic_deliver, contents, %{delivery_tag: delivery_tag, redelivered: _}}, channel) do
     case JSX.decode(contents) do
-      {:ok, %{"subject" => subject, "body" => body, "action" => action, "users" => users}} ->
-        Kernel.spawn(fn() -> info(subject, body, action, users) end)
-        Kernel.spawn(fn() -> Basic.ack(channel, delivery_tag) end)
-      {:ok, %{"subject" => subject, "body" => body, "user_ids" => user_ids}} ->
-        Kernel.spawn(fn() -> info(subject, body, user_ids) end)
-        Kernel.spawn(fn() -> Basic.ack(channel, delivery_tag) end)
-      {:ok, %{"subject" => subject, "body" => body}} ->
-        Kernel.spawn(fn() -> info(subject, body) end)
-        Kernel.spawn(fn() -> Basic.ack(channel, delivery_tag) end)
-      {:ok, _} ->
-        Kernel.spawn(fn() -> Utilities.log("info()", %{"contents" => contents}) end)
-        Kernel.spawn(fn() -> Basic.reject(channel, delivery_tag, requeue: not redelivered) end)
+      {:ok, contents} ->
+        Kernel.spawn(fn() -> handle_info(contents) end)
       {:error, reason} ->
-        Kernel.spawn(fn() -> Utilities.log("info()", %{"contents" => contents, "reason" => reason}) end)
-        Kernel.spawn(fn() -> Basic.reject(channel, delivery_tag, requeue: not redelivered) end)
+        Kernel.spawn(fn() -> Utilities.log("handle_info()", %{"contents" => contents, "reason" => reason}) end)
     end
+    Kernel.spawn(fn() -> Basic.ack(channel, delivery_tag) end)
     {:noreply, channel}
+  end
+
+  def handle_info(%{"args" => args}) do
+    Kernel.spawn(fn() -> handle_info(List.first(args[0])) end)
+  end
+
+  def handle_info(%{"subject" => subject, "body" => body, "action" => action, "users" => users}) do
+    Kernel.spawn(fn() -> info(subject, body, action, users) end)
+  end
+
+  def handle_info(%{"subject" => subject, "body" => body, "user_ids" => user_ids}) do
+    Kernel.spawn(fn() -> info(subject, body, user_ids) end)
+  end
+
+  def handle_info(%{"subject" => subject, "body" => body}) do
+    Kernel.spawn(fn() -> info(subject, body) end)
+  end
+
+  def handle_info(contents) do
+    Kernel.spawn(fn() -> Utilities.log("handle_info()", %{"contents" => contents}) end)
   end
 
   def info("messages", body, action, users) do
@@ -99,7 +110,7 @@ defmodule WebSockets.RabbitMQ do
     Kernel.spawn(fn() -> blocks_1(body) end)
   end
 
-  def info("messages", _body) do
+  def info("messages", _) do
     Kernel.spawn(fn() -> Utilities.log("RabbitMQ", "In", "master_tells") end)
     # TODO
   end
@@ -114,7 +125,7 @@ defmodule WebSockets.RabbitMQ do
     Kernel.spawn(fn() -> profile_1(body) end)
   end
 
-  def info("users_locations", _body) do
+  def info("users_locations", _) do
     Kernel.spawn(fn() -> Utilities.log("RabbitMQ", "In", "users_locations") end)
     # TODO
   end
