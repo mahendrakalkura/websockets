@@ -9,7 +9,6 @@ defmodule WebSockets.RabbitMQ do
   alias AMQP.Connection, as: Connection
   alias AMQP.Exchange, as: Exchange
   alias AMQP.Queue, as: Queue
-  alias Ecto.Adapters.SQL, as: SQL
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
   alias WebSockets.Utilities, as: Utilities
@@ -153,94 +152,45 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def blocks_1(id) do
-    case SQL.query(Repo, "SELECT user_source_id, user_destination_id FROM api_blocks WHERE id = $1", [id], []) do
-      {:ok, %{rows: rows, num_rows: 1}} -> Kernel.spawn(fn() -> blocks_2(rows) end)
-    end
+    Kernel.spawn(fn() -> blocks_2(Repo.get!(Block, id)) end)
   end
 
-  def blocks_2(rows) do
-    Enum.each(rows, fn(row) -> Kernel.spawn(fn() -> blocks_3(Enum.at(row, 0), Enum.at(row, 1)) end) end)
-  end
-
-  def blocks_3(user_source_id, user_destination_id) do
-    Enum.each(
-      Clients.select_any(user_destination_id),
-      fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"blocks", user_source_id}) end) end
-    )
+  def blocks_2(block) do
+    Kernel.send(Clients.select_any(block.user_destination_id), {"blocks", block.user_source_id})
   end
 
   def notifications_1(id) do
-    case SQL.query(
-      Repo, "SELECT id, user_id, type, contents, status, timestamp FROM api_notifications WHERE id = $1", [id], []
-    ) do
-      {:ok, %{rows: rows, num_rows: 1}} -> Kernel.spawn(fn() -> notifications_2(rows) end)
-    end
+    Kernel.spawn(fn() -> notifications_2(Repo.get!(Notification, id)) end)
   end
 
-  def notifications_2(rows) do
-    Enum.each(
-      rows,
-      fn(row) ->
-        Kernel.spawn(
-          fn() ->
-            notifications_3(
-              %{
-                "id" => Enum.at(row, 0),
-                "user_id" => Enum.at(row, 1),
-                "type" => Enum.at(row, 2),
-                "contents" => Enum.at(row, 3),
-                "status" => Enum.at(row, 4),
-                "timestamp" => Enum.at(row, 5)
-              }
-            )
-          end
-        )
-      end
-    )
-  end
-
-  def notifications_3(notification) do
-    Enum.each(
+  def notifications_2(notification) do
+    Kernel.send(
       Clients.select_any(notification.user_id),
-      fn(pid) ->
-        Kernel.spawn(
-          fn() ->
-            Kernel.send(
-              pid,
-              {
-                "blocks",
-                %{
-                  "id" => notification.id,
-                  "user_id" => notification.user_id,
-                  "type" => notification.type,
-                  "contents" => notification.contents,
-                  "status" => notification.status,
-                  "timestamp" => notification.timestamp
-                }
-              }
-            )
-          end
-        )
-      end
+      {
+        "blocks",
+        %{
+          "id" => notification.id,
+          "user_id" => notification.user_id,
+          "type" => notification.type,
+          "contents" => notification.contents,
+          "status" => notification.status,
+          "timestamp" => notification.timestamp
+        }
+      }
     )
   end
 
   def profile_1(user_destination_id) do
-    case SQL.query(
-      Repo, "SELECT user_source_id FROM api_tellcards WHERE user_destination_id = $1", [user_destination_id], []
-    ) do
-      {:ok, %{rows: rows, num_rows: _}} -> Kernel.spawn(fn() -> profile_2(rows, user_destination_id) end)
-    end
-  end
-
-  def profile_2(rows, user_destination_id) do
-    Enum.each(rows, fn(row) -> Kernel.spawn(fn() -> profile_3(Enum.at(row, 0), user_destination_id) end) end)
-  end
-
-  def profile_3(user_source_id, user_destination_id) do
     Enum.each(
-      Clients.select_any(user_source_id),
-      fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"profile", user_destination_id}) end) end
+      Repo.all(Tellcard, user_destination_id: user_destination_id),
+      fn(tellcard) -> Kernel.spawn(fn() -> profile_2(tellcard) end) end
+    )
+  end
+
+  def profile_2(tellcard) do
+    Enum.each(
+      Clients.select_any(tellcard.user_source_id),
+      fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"profile", tellcard.user_destination_id}) end) end
     )
   end
 end

@@ -4,9 +4,9 @@ defmodule WebSockets.Router do
   @behaviour :cowboy_websocket_handler
 
   alias Comeonin.Bcrypt, as: Bcrypt
-  alias Ecto.Adapters.SQL, as: SQL
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
+  alias WebSockets.Repo.User, as: User
   alias WebSockets.Utilities, as: Utilities
 
   require Application
@@ -170,13 +170,13 @@ defmodule WebSockets.Router do
   end
 
   def users_4(id, request, state) do
-    case SQL.query(Repo, "SELECT * FROM api_users WHERE id = $1", [id], []) do
-      {:ok, %{rows: _rows, num_rows: 1}} ->
-        Clients.insert(Kernel.self(), id)
-        Kernel.send(Kernel.self(), {"users", true})
-        {:ok, request, state}
-      _ ->
+    case Repo.get(User, id) do
+      nil ->
         Kernel.send(Kernel.self(), {"users", false})
+        {:ok, request, state}
+      user ->
+        Clients.insert(Kernel.self(), user.id)
+        Kernel.send(Kernel.self(), {"users", true})
         {:ok, request, state}
     end
   end
