@@ -11,6 +11,7 @@ defmodule WebSockets.Router do
   alias ExJsonSchema.Validator, as: Validator
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
+  alias WebSockets.Repo.Block, as: Block
   alias WebSockets.Repo.Message, as: Message
   alias WebSockets.Repo.User, as: User
   alias WebSockets.Repo.UserLocation, as: UserLocation
@@ -142,10 +143,8 @@ defmodule WebSockets.Router do
 
   def messages_1(pid, body) do
     case Utilities.get_id(pid) do
-      0 ->
-        Kernel.send(pid, {"messages", %{"body" => %{"errors" => "Invalid User"}}})
-      id -> nil
-        Kernel.spawn(fn() -> messages_2(pid, id, body) end)
+      0 -> Kernel.send(pid, {"messages", %{"body" => %{"errors" => "Invalid User"}}})
+      id -> Kernel.spawn(fn() -> messages_2(pid, id, body) end)
     end
   end
 
@@ -195,13 +194,13 @@ defmodule WebSockets.Router do
           fn() ->
             Utilities.log(
               "messages_3()",
-              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+              %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
             )
           end
         )
         Kernel.send(pid, {"messages", %{"body" => %{"errors" => changeset.errors}}})
       _ ->
-        Kernel.spawn(fn() -> users_locations_post_4(pid, changeset) end)
+        Kernel.spawn(fn() -> messages_4(pid, changeset) end)
     end
   end
 
@@ -220,16 +219,187 @@ defmodule WebSockets.Router do
             )
           end
         )
+        Kernel.spawn(fn() -> messages_5(message) end)
       {:error, changeset} ->
         Kernel.spawn(
           fn() ->
             Utilities.log(
               "messages_4()",
-              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+              %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
             )
           end
         )
         Kernel.send(pid, {"messages", %{"body" => %{"errors" => "Invalid Body"}}})
+    end
+  end
+
+  def messages_5(message = %{:type => "Response - Blocked"}) do
+    case message do
+      %{:type => "Response - Rejected"} ->
+        Kernel.spawn(fn() -> messages_6(message) end)
+      %{:type => "Response - Blocked"} ->
+        Kernel.spawn(fn() -> messages_6(message) end)
+        Kernel.spawn(fn() -> messages_7(message) end)
+      _ -> nil
+    end
+    Kernel.spawn(fn() -> messages_9(message) end)
+  end
+
+  def messages_6(message) do
+    ids = [message.id]
+    case SQL.query(
+      Repo,
+      """
+      SELECT id
+      FROM messages
+      WHERE
+        (
+          id < $1
+          (
+            (user_source_id = $2 AND user_destination_id = $3)
+            OR
+            (user_source_id = $3 AND user_destination_id = $2)
+          )
+          AND
+          type = $4
+        )
+      """,
+      [message.id, message.user_source_id, message.user_destination_id, "Request"],
+      []
+    ) do
+      {:ok, %{rows: rows, num_rows: 1}} -> ids = ids ++ [Enum.at(Enum.at(rows, 0))]
+      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+    end
+    case SQL.query(Repo, "UPDATE api_messages SET is_suppressed = $1 WHERE id = ANY($2)", [true, ids], []) do
+      {:ok, _} -> nil
+      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+    end
+  end
+
+  def messages_7(message) do
+    changeset = Block.changeset(
+      %Block{}, %{"user_source_id" => message.user_source_id, "user_destination_id" => message.user_destination_id}
+    )
+    case changeset.valid? do
+      false ->
+        Kernel.spawn(
+          fn() ->
+            Utilities.log(
+              "messages_7()",
+              %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
+            )
+          end
+        )
+      _ -> Kernel.spawn(fn() -> messages_8(changeset) end)
+    end
+  end
+
+  def messages_8(changeset) do
+    case Repo.insert(changeset) do
+      {:ok, block} ->
+        Kernel.spawn(
+          fn() ->
+            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
+            {:ok, channel} = Channel.open(connection)
+            Basic.publish(
+              channel,
+              WebSockets.get_exchange(),
+              WebSockets.get_routing_key(),
+              "{\"subject\":\"blocks\",\"body\":\"#{block.id}\"}"
+            )
+          end
+        )
+      {:error, changeset} ->
+        Kernel.spawn(
+          fn() ->
+            Utilities.log(
+              "messages_7()",
+              %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
+            )
+          end
+        )
+    end
+  end
+
+  def messages_9(message = %{:type => "Request"}) do
+    case SQL.query(
+      Repo,
+      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      [message.user_destination_id, "notifications_invitations", "True"],
+      []
+    ) do
+      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
+      {:ok, _} -> nil
+      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+    end
+  end
+
+  def messages_9(message = %{:type => "Response - Accepted"}) do
+    case SQL.query(
+      Repo,
+      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      [message.user_destination_id, "notifications_invitations", "True"],
+      []
+    ) do
+      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
+      {:ok, _} -> nil
+      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+    end
+  end
+
+  def messages_9(message = %{:type => "Message"}) do
+    case SQL.query(
+      Repo,
+      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      [message.user_destination_id, "notifications_messages", "True"],
+      []
+    ) do
+      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
+      {:ok, _} -> nil
+      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+    end
+  end
+
+  def messages_9(message = %{:type => "Ask"}) do
+    case SQL.query(
+      Repo,
+      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      [message.user_destination_id, "notifications_messages", "True"],
+      []
+    ) do
+      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
+      {:ok, _} -> nil
+      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+    end
+  end
+
+  def messages_10(message) do
+    contents = {
+      message.user_destination_id,
+      %{
+        "aps" => %{
+          "alert" => %{
+            "title" => "New message from user",
+            "body" => message.contents
+          },
+          "badge" => 0
+        },
+        "type" => "message",
+        "user_source_id" => message.user_source_id,
+        "post_id" => message.post_id
+      }
+    }
+    case JSX.encode(contents) do
+      {:ok, contents} ->
+        Kernel.spawn(
+          fn() ->
+            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
+            {:ok, channel} = Channel.open(connection)
+            Basic.publish(channel, "api.tasks.push_notifications", "api.tasks.push_notifications", contents)
+          end
+        )
+      {:error, reason} ->
+        Kernel.spawn(fn() -> Utilities.log("messages_10()", %{"contents" => contents, "reason" => reason}) end)
     end
   end
 
@@ -315,7 +485,7 @@ defmodule WebSockets.Router do
           fn() ->
             Utilities.log(
               "users_locations_post_3()",
-              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+              %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
             )
           end
         )
@@ -345,7 +515,7 @@ defmodule WebSockets.Router do
           fn() ->
             Utilities.log(
               "users_locations_post_4()",
-              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+              %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
             )
           end
         )

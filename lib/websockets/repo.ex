@@ -177,6 +177,11 @@ end
 defmodule WebSockets.Repo.Block do
   @moduledoc false
 
+  @optional_fields ~w(timestamp)
+  @required_fields ~w(user_source_id user_destination_id)
+
+  alias Ecto.Changeset, as: Changeset
+  alias Ecto.DateTime, as: DateTime
   alias Ecto.Schema, as: Schema
 
   use Ecto.Schema
@@ -189,6 +194,16 @@ defmodule WebSockets.Repo.Block do
       Schema.belongs_to(:user_destination, WebSockets.Repo.User)
     )
   )
+
+  def changeset(block, parameters \\ :empty) do
+    block
+    |> Changeset.cast(parameters, @required_fields, @optional_fields)
+    |> timestamp()
+  end
+
+  def timestamp(parameters) do
+    Changeset.change(parameters, %{:timestamp => DateTime.utc()})
+  end
 end
 
 defmodule WebSockets.Repo.Category do
@@ -370,7 +385,7 @@ defmodule WebSockets.Repo.Message do
     end
   end
 
-  def validate_type_4(parameters = %{"changes" => %{"type" => "Ask"}}, message = %{:type => "Request"}) do
+  def validate_type_4(parameters = %{"changes" => %{"type" => "Message"}}, message = %{:type => "Request"}) do
     if parameters.changes.user_source_id === message.user_destination_id do
       Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
     else
@@ -378,7 +393,7 @@ defmodule WebSockets.Repo.Message do
     end
   end
 
-  def validate_type_4(parameters = %{"changes" => %{"type" => "Message"}}, message = %{:type => "Request"}) do
+  def validate_type_4(parameters = %{"changes" => %{"type" => "Ask"}}, message = %{:type => "Request"}) do
     if parameters.changes.user_source_id === message.user_destination_id do
       Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
     else
