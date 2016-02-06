@@ -187,7 +187,6 @@ defmodule WebSockets.RabbitMQ do
     Kernel.spawn(
       fn() ->
         message = Repo.get_message(message)
-        IO.inspect message
         unless message[key]["settings"]["email"] do
           Kernel.put_in(message, [key, "email"], nil)
         end
@@ -270,6 +269,7 @@ defmodule WebSockets.RabbitMQ do
         |> Query.where(user_id: ^user_location.user_id)
         |> Query.order_by(desc: :id)
         |> Query.limit(2)
+        |> Query.offset(0)
         |> Repo.all()
         users_locations_3(users_locations)
         users_locations_4(users_locations)

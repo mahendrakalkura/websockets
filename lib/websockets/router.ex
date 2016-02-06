@@ -11,6 +11,7 @@ defmodule WebSockets.Router do
   alias ExJsonSchema.Validator, as: Validator
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
+  alias WebSockets.Repo.Message, as: Message
   alias WebSockets.Repo.User, as: User
   alias WebSockets.Repo.UserLocation, as: UserLocation
   alias WebSockets.Utilities, as: Utilities
@@ -139,12 +140,92 @@ defmodule WebSockets.Router do
     Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "_"}) end)
   end
 
-  def messages_1(pid, _body) do
+  def messages_1(pid, body) do
     case Utilities.get_id(pid) do
       0 ->
         Kernel.send(pid, {"messages", %{"body" => %{"errors" => "Invalid User"}}})
-      _id -> nil
-        # TODO
+      id -> nil
+        Kernel.spawn(fn() -> messages_2(pid, id, body) end)
+    end
+  end
+
+  def messages_2(pid, id, body) do
+    schema = Schema.resolve(%{
+      "properties" => %{
+        "user_source_is_hidden" => %{"type" => "boolean"},
+        "user_destination_id" => %{"type" => "integer"},
+        "user_destination_is_hidden" => %{"type" => "boolean"},
+        "user_status_id" => %{"type" => "integer"},
+        "master_tell_id" => %{"type" => "integer"},
+        "post_id" => %{"type" => "integer"},
+        "type" => %{
+          "enum" => ["Ask", "Message", "Request", "Response - Accepted", "Response - Blocked", "Response - Rejected"]
+        },
+        "contents" => %{"type" => "string"},
+        "status" => %{"enum" => ["Unread", "Read"]},
+        "attachments" => %{
+          "type" => "array",
+          "items" => %{
+            "properties" => %{
+              "string" => %{"type" => "string"},
+              "position" => %{"type" => "integer"},
+            },
+            "required" => ["string", "position"],
+            "type" => "object"
+          },
+          "minItems" => 0
+        }
+      },
+      "required" => ["user_destination_id", "type", "status"],
+      "type" => "object"
+    })
+    case Validator.validate(schema, body) do
+      {:error, errors} ->
+        Kernel.send(pid, {"messages", %{"body" => %{"errors" => errors}}})
+      :ok ->
+        Kernel.spawn(fn() -> messages_3(pid, id, body) end)
+    end
+  end
+
+  def messages_3(pid, id, body) do
+    changeset = Message.changeset(%Message{}, Map.merge(body, %{"user_source_id" => id}))
+    case changeset.valid? do
+      false ->
+        Kernel.spawn(
+          fn() ->
+            Utilities.log(
+              "messages_3()",
+              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+            )
+          end
+        )
+        Kernel.send(pid, {"messages", %{"body" => %{"errors" => changeset.errors}}})
+      _ ->
+        Kernel.spawn(fn() -> users_locations_post_4(pid, changeset) end)
+    end
+  end
+
+  def messages_4(pid, changeset) do
+    case Repo.insert(changeset) do
+      {:ok, message} ->
+        {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
+        {:ok, channel} = Channel.open(connection)
+        Basic.publish(
+          channel,
+          WebSockets.get_exchange(),
+          WebSockets.get_routing_key(),
+          "{\"subject\":\"messages\",\"body\":\"#{message.id}\"}"
+        )
+      {:error, changeset} ->
+        Kernel.spawn(
+          fn() ->
+            Utilities.log(
+              "messages_4()",
+              %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
+            )
+          end
+        )
+        Kernel.send(pid, {"messages", %{"body" => %{"errors" => "Invalid Body"}}})
     end
   end
 
@@ -229,7 +310,7 @@ defmodule WebSockets.Router do
         Kernel.spawn(
           fn() ->
             Utilities.log(
-              "users_locations_post_2()",
+              "users_locations_post_3()",
               %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
             )
           end
@@ -255,7 +336,7 @@ defmodule WebSockets.Router do
         Kernel.spawn(
           fn() ->
             Utilities.log(
-              "users_locations_post_3()",
+              "users_locations_post_4()",
               %{"changeset" => %{"params" => changeset.errors, "errors" => changeset.errors}}
             )
           end
