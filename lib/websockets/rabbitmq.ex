@@ -278,12 +278,103 @@ defmodule WebSockets.RabbitMQ do
     )
   end
 
-  def users_locations_3(_users_locations) do
-    # TODO
+  def users_locations_3(users_locations) do
+    user_location = Enum.at(users_locations, 0)
+    Enum.each(
+      Clients.select_any(user_location.user_id),
+      fn(pid) ->
+        Kernel.spawn(fn() -> Kernel.send(pid, {"messages", Utilities.get_radar_post(user_location)}) end)
+      end
+    )
   end
 
-  def users_locations_4(_users_locations) do
-    # TODO
+  def users_locations_4(
+    users_locations
+  ) when Kernel.is_list(users_locations) and Kernel.length(users_locations) === 2 do
+    user_location_1 = Enum.at(users_locations, 0)
+    user_location_2 = Enum.at(users_locations, 1)
+    unless (
+      user_location_1.network_id === user_location_2.network_id
+      and
+      user_location_1.tellzone_id === user_location_2.tellzone_id
+    ) do
+      Utilities.users_locations_4(user_location_1)
+    end
+  end
+
+  def users_locations_4(
+    users_locations
+  ) when Kernel.is_list(users_locations) and Kernel.length(users_locations) === 1 do
+    Utilities.users_locations(Enum.at(users_locations, 0))
+  end
+
+  def users_locations_4(user_location) do
+    _blocks = %{} # REVIEW
+    {longitude, latitude} = user_location.point.coordinates
+    user_ids = case SQL.query(
+      Repo,
+      """
+      SELECT api_users_locations.user_id AS user_id
+      FROM api_users_locations
+      WHERE
+          api_users_locations.user_id != $1
+          AND
+          (
+              api_users_locations.network_id = $2
+              OR
+              api_users_locations.tellzone_id = $3
+              OR
+              ST_DWithin(ST_Transform($4, 2163), ST_Transform(api_users_locations.point, 2163), $5)
+          )
+          AND
+          api_users_locations.is_casting IS TRUE
+          AND
+          api_users_locations.timestamp > NOW() - INTERVAL '1 minute'
+      ORDER BY api_users_locations.user_id ASC
+      """,
+      [
+        user_location.user_id,
+        user_location.network_id,
+        user_location.tellzone_id,
+        Utilities.get_point(%{"longitude" => latitude, "latitude" => longitude}),
+        300.00
+      ],
+      []
+    ) do
+      {:ok, %{rows: rows}} -> Enum.uniq(Enum.each(rows, fn([user_id]) -> user_id end))
+      _ -> []
+    end
+    if Kernel.length(user_ids) do
+      Utilities.publish(
+        WebSockets.get_exchange(),
+        WebSockets.get_routing_key(),
+        %{"user_ids" => user_ids, "subject" => "master_tells", "body" => %{"type" => "home"}}
+      )
+      Utilities.publish(
+        WebSockets.get_exchange(),
+        WebSockets.get_routing_key(),
+        %{
+          "user_ids" => user_ids,
+          "subject" => "master_tells",
+          "body" => %{
+            "id" => user_location.network_id,
+            "type" => "networks"
+          }
+        }
+      )
+      Utilities.publish(
+        WebSockets.get_exchange(),
+        WebSockets.get_routing_key(),
+        %{
+          "user_ids" => user_ids,
+          "subject" => "master_tells",
+          "body" => %{
+            "id" => user_location.tellzone_id,
+            "type" => "tellzones"
+          }
+        }
+      )
+    end
   end
 
   def users_locations_5(users_locations) when Kernel.length(users_locations) === 1 do
@@ -299,7 +390,24 @@ defmodule WebSockets.RabbitMQ do
     end
   end
 
-  def users_locations_6(_user_location) do
-    # TODO
+  def users_locations_6(user_location) do
+    users = Utilities.get_users(user_location.point, 300.0)
+    blocks = %{} # REVIEW
+    Enum.each(users, fn(user) -> Kernel.spawn(fn() -> users_locations_7(user, users, blocks) end) end)
+  end
+
+  def users_locations_7(user, users, _blocks) do
+    Enum.each(
+      Clients.select_any(user),
+      fn(pid) ->
+        Kernel.send(
+          pid,
+          {
+            "users_locations_get",
+            Utilities.get_radar_get(user, Enum.filter(users, fn(u) -> user["id"] != u["id"] end))
+          }
+        )
+      end
+    )
   end
 end

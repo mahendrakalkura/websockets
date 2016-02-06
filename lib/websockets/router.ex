@@ -3,10 +3,8 @@ defmodule WebSockets.Router do
 
   @behaviour :cowboy_websocket_handler
 
-  alias AMQP.Basic, as: Basic
-  alias AMQP.Channel, as: Channel
-  alias AMQP.Connection, as: Connection
   alias Comeonin.Bcrypt, as: Bcrypt
+  alias Ecto.Adapters.SQL, as: SQL
   alias ExJsonSchema.Schema, as: Schema
   alias ExJsonSchema.Validator, as: Validator
   alias WebSockets.Clients, as: Clients
@@ -209,13 +207,10 @@ defmodule WebSockets.Router do
       {:ok, message} ->
         Kernel.spawn(
           fn() ->
-            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
-            {:ok, channel} = Channel.open(connection)
-            Basic.publish(
-              channel,
+            Utilities.publish(
               WebSockets.get_exchange(),
               WebSockets.get_routing_key(),
-              "{\"subject\":\"messages\",\"body\":\"#{message.id}\"}"
+              %{"subject" => "messages", "body" => message.id}
             )
           end
         )
@@ -299,13 +294,10 @@ defmodule WebSockets.Router do
       {:ok, block} ->
         Kernel.spawn(
           fn() ->
-            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
-            {:ok, channel} = Channel.open(connection)
-            Basic.publish(
-              channel,
+            Utilities.publish(
               WebSockets.get_exchange(),
               WebSockets.get_routing_key(),
-              "{\"subject\":\"blocks\",\"body\":\"#{block.id}\"}"
+              %{"subject" => "blocks", "body" => block.id}
             )
           end
         )
@@ -328,7 +320,26 @@ defmodule WebSockets.Router do
       [message.user_destination_id, "notifications_invitations", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
+      {:ok, %{rows: [[0]], num_rows: 1}} ->
+        Utilities.publish(
+          "api.tasks.push_notifications",
+          "api.tasks.push_notifications",
+          {
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents # REVIEW
+                },
+                "badge" => 0 # REVIEW
+              },
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+              "post_id" => message.post_id
+            }
+          }
+        )
       {:ok, _} -> nil
       {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
@@ -341,7 +352,26 @@ defmodule WebSockets.Router do
       [message.user_destination_id, "notifications_invitations", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
+      {:ok, %{rows: [[0]], num_rows: 1}} ->
+        Utilities.publish(
+          "api.tasks.push_notifications",
+          "api.tasks.push_notifications",
+          {
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents # REVIEW
+                },
+                "badge" => 0 # REVIEW
+              },
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+              "post_id" => message.post_id
+            }
+          }
+        )
       {:ok, _} -> nil
       {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
@@ -354,7 +384,26 @@ defmodule WebSockets.Router do
       [message.user_destination_id, "notifications_messages", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
+      {:ok, %{rows: [[0]], num_rows: 1}} ->
+        Utilities.publish(
+          "api.tasks.push_notifications",
+          "api.tasks.push_notifications",
+          {
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents # REVIEW
+                },
+                "badge" => 0 # REVIEW
+              },
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+              "post_id" => message.post_id
+            }
+          }
+        )
       {:ok, _} -> nil
       {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
@@ -367,39 +416,28 @@ defmodule WebSockets.Router do
       [message.user_destination_id, "notifications_messages", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} -> Kernel.spawn(fn() -> messages_10(message) end)
-      {:ok, _} -> nil
-      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
-    end
-  end
-
-  def messages_10(message) do
-    contents = {
-      message.user_destination_id,
-      %{
-        "aps" => %{
-          "alert" => %{
-            "title" => "New message from user",
-            "body" => message.contents
-          },
-          "badge" => 0
-        },
-        "type" => "message",
-        "user_source_id" => message.user_source_id,
-        "post_id" => message.post_id
-      }
-    }
-    case JSX.encode(contents) do
-      {:ok, contents} ->
-        Kernel.spawn(
-          fn() ->
-            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
-            {:ok, channel} = Channel.open(connection)
-            Basic.publish(channel, "api.tasks.push_notifications", "api.tasks.push_notifications", contents)
-          end
+      {:ok, %{rows: [[0]], num_rows: 1}} ->
+        Utilities.publish(
+          "api.tasks.push_notifications",
+          "api.tasks.push_notifications",
+          {
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents # REVIEW
+                },
+                "badge" => 0 # REVIEW
+              },
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+              "post_id" => message.post_id
+            }
+          }
         )
-      {:error, reason} ->
-        Kernel.spawn(fn() -> Utilities.log("messages_10()", %{"contents" => contents, "reason" => reason}) end)
+      {:ok, _} -> nil
+      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_9()", %{"exception" => exception}) end)
     end
   end
 
@@ -500,13 +538,10 @@ defmodule WebSockets.Router do
       {:ok, user_location} ->
         Kernel.spawn(
           fn() ->
-            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
-            {:ok, channel} = Channel.open(connection)
-            Basic.publish(
-              channel,
+            Utilities.publish(
               WebSockets.get_exchange(),
               WebSockets.get_routing_key(),
-              "{\"subject\":\"users_locations\",\"body\":\"#{user_location.id}\"}"
+              %{"subject" => "users_locations", "body" => user_location.id}
             )
           end
         )

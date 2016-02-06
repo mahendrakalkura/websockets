@@ -1,14 +1,21 @@
 defmodule WebSockets.Utilities do
   @moduledoc false
 
+  alias AMQP.Basic, as: Basic
+  alias AMQP.Channel, as: Channel
+  alias AMQP.Connection, as: Connection
+  alias Ecto.Adapters.SQL, as: SQL
   alias Geo.WKT, as: WKT
   alias GeoPotion.Distance, as: Distance
   alias GeoPotion.Vector, as: Vector
   alias WebSockets.Clients, as: Clients
+  alias WebSockets.Repo, as: Repo
 
+  require Application
   require ExSentry
   require GeoPotion.Distance
   require GeoPotion.Vector
+  require JSX
   require Kernel
   require Logger
 
@@ -22,6 +29,13 @@ defmodule WebSockets.Utilities do
 
   def log(message, extra) do
     ExSentry.capture_message(message, extra: extra)
+  end
+
+  def publish(exchange, routing_key, contents) do
+    {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
+    {:ok, channel} = Channel.open(connection)
+    {:ok, contents} = JSX.encode(contents)
+    Basic.publish(channel, exchange, routing_key, contents)
   end
 
   def get_direction(string) do
@@ -50,5 +64,165 @@ defmodule WebSockets.Utilities do
 
   def get_point(_) do
     nil
+  end
+
+  def get_radar_get(user, users) do
+    users
+    |> Enum.map(
+      fn(u) ->
+        distance = get_distance(
+          {user["point"]["longitude"], user["point"]["latitude"]}, {u["point"]["longitude"], u["point"]["latitude"]}
+        )
+        group = cond do # REVIEW
+          user["tellzone_id"] === u["tellzone_id"] -> 1
+          distance <= 300.0 -> 1
+          true -> 2
+        end
+        # REVIEW (settings.show_photo -> u.photo_original + u.photo_preview)
+        # REVIEW (delete -> u.network_id, u.tellzone_id, u.point + u.settings)
+        %{
+          "id" => u["id"],
+          "photo_original" => u["photo_original"],
+          "photo_preview" => u["photo_preview"],
+          "distance" => distance,
+          "group" => group
+        }
+      end
+    )
+    |> Enum.sort(&(&1["distance"] < &2["distance"]))
+    |> Enum.with_index()
+    |> Enum.map(
+      fn({position, user}) ->
+        %{
+          "hash" => user["id"],
+          "items" => [user],
+          "position" => position + 1
+        }
+      end
+    )
+  end
+
+  def get_radar_post_1(user_location) do
+    {longitude, latitude} = user_location.point.coordinates
+    case SQL.query(
+      Repo,
+      """
+      SELECT
+          api_tellzones.id AS api_tellzones_id,
+          api_tellzones.name AS api_tellzones_name,
+          ST_Distance(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163)) * 3.28084 AS distance,
+          api_networks.id AS api_networks_id,
+          api_networks.name AS api_networks_name
+      FROM api_tellzones
+      LEFT OUTER JOIN api_networks_tellzones ON api_networks_tellzones.tellzone_id = api_tellzones.id
+      LEFT OUTER JOIN api_networks ON api_networks.id = api_networks_tellzones.network_id
+      WHERE ST_DWithin(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163), 91.44)
+      """,
+      [get_point(%{"longitude" => latitude, "latitude" => longitude})],
+      []
+    ) do
+      {:ok, %{num_rows: 0}} -> get_radar_post_2(user_location)
+      {:ok, %{rows: rows, num_rows: _}} -> get_radar_post_3(rows)
+    end
+  end
+
+  def get_radar_post_2(user_location) do
+    {longitude, latitude} = user_location.point.coordinates
+    case SQL.query(
+      Repo,
+      """
+      SELECT
+          api_tellzones.id AS api_tellzones_id,
+          api_tellzones.name AS api_tellzones_name,
+          ST_Distance(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163)) * 3.28084 AS distance,
+          api_networks.id AS api_networks_id,
+          api_networks.name AS api_networks_name
+      FROM api_tellzones
+      LEFT OUTER JOIN api_networks_tellzones ON api_networks_tellzones.tellzone_id = api_tellzones.id
+      LEFT OUTER JOIN api_networks ON api_networks.id = api_networks_tellzones.network_id
+      WHERE
+          api_networks_tellzones.network_id IN (
+              SELECT DISTINCT api_networks.id
+              FROM api_tellzones
+              INNER JOIN api_networks_tellzones ON api_networks_tellzones.tellzone_id = api_tellzones.id
+              INNER JOIN api_networks ON api_networks.id = api_networks_tellzones.network_id
+              WHERE ST_DWithin(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163), 8046.72)
+              ORDER BY api_networks.id ASC
+          )
+          AND
+          api_tellzones.status = $2
+      """,
+      [get_point(%{"longitude" => latitude, "latitude" => longitude}), "Public"],
+      []
+    ) do
+      {:ok, %{num_rows: 0}} -> []
+      {:ok, %{rows: rows, num_rows: _}} -> get_radar_post_3(rows)
+    end
+  end
+
+  def get_radar_post_3(rows) do
+    tellzones = Enum.map(
+      rows,
+      fn(row) ->
+        %{
+          "id" => Enum.at(row, 0),
+          "name" => Enum.at(row, 1),
+          "distance" => Enum.at(row, 2),
+          "network" => %{
+            "id" => Enum.at(row, 3),
+            "name" => Enum.at(row, 4)
+          }
+        }
+      end
+    )
+    Enum.sort(tellzones, &(&1["distance"] < &2["distance"]))
+    # sort networks by +name, -id
+    # sort tellzones by +distance, -id
+  end
+
+  def get_users(point, radius) do
+    {longitude, latitude} = point.coordinates
+    case SQL.query(
+      Repo,
+      """
+      SELECT
+          api_users_locations.network_id AS network_id,
+          api_users_locations.tellzone_id AS tellzone_id,
+          ST_AsGeoJSON(api_users_locations.point) AS point,
+          api_users.id AS id,
+          api_users.photo_original AS photo_original,
+          api_users.photo_preview AS photo_preview,
+          api_users_settings.key AS user_setting_key,
+          api_users_settings.value AS user_setting_value
+      FROM api_users_locations
+      INNER JOIN (
+          SELECT MAX(api_users_locations.id) AS id
+          FROM api_users_locations
+          WHERE api_users_locations.timestamp > NOW() - INTERVAL '1 minute'
+          GROUP BY api_users_locations.user_id
+      ) api_users_locations_ ON api_users_locations_.id = api_users_locations.id
+      INNER JOIN api_users ON api_users.id = api_users_locations.user_id
+      LEFT OUTER JOIN api_users_settings AS api_users_settings ON api_users_settings.user_id = api_users.id
+      WHERE
+          ST_DWithin(ST_Transform(ST_GeomFromText(%s, 4326), 2163), ST_Transform(api_users_locations.point, 2163), %s)
+          AND
+          api_users_locations.is_casting IS TRUE
+          AND
+          api_users_locations.timestamp > NOW() - INTERVAL '1 minute'
+          AND
+          api_users.is_signed_in IS TRUE
+          AND
+          api_users_settings.key = 'show_photo'
+      ORDER BY api_users_locations.user_id ASC
+      """,
+      [get_point(%{"longitude" => latitude, "latitude" => longitude}), radius],
+      []
+    ) do
+      {:ok, %{rows: rows}} -> get_users(rows)
+    end
+  end
+
+  def get_users(users) do
+    users # REVIEW
   end
 end
