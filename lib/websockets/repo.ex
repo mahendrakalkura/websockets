@@ -119,9 +119,23 @@ defmodule WebSockets.Repo do
           "gender" => user.gender,
           "location" => user.location,
           "description" => user.description,
-          "phone" => user.phone
+          "phone" => user.phone,
+          "settings" => get_user_settings(user.settings)
         }
     end
+  end
+
+  def get_user_settings(user_settings) do
+    Enum.reduce(
+      user_settings,
+      %{},
+      fn(user_setting, map) ->
+        case user_setting.value do
+          "True" -> Map.merge(map, %{user_setting.key => true})
+          _ -> Map.merge(map, %{user_setting.key => false})
+        end
+      end
+    )
   end
 
   def get_user_status(user_status) do
