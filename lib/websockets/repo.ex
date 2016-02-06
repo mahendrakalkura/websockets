@@ -1,6 +1,8 @@
 defmodule WebSockets.Repo do
   @moduledoc false
 
+  alias Ecto.DateTime, as: DateTime
+
   require Map
 
   use Ecto.Repo, otp_app: :websockets
@@ -17,8 +19,8 @@ defmodule WebSockets.Repo do
       "contents" => master_tell.contents,
       "position" => master_tell.position,
       "is_visible" => master_tell.is_visible,
-      "inserted_at" => master_tell.inserted_at,
-      "updated_at" => master_tell.updated_at
+      "inserted_at" => DateTime.to_iso8601(master_tell.inserted_at),
+      "updated_at" => DateTime.to_iso8601(master_tell.updated_at)
     }
   end
 
@@ -44,8 +46,8 @@ defmodule WebSockets.Repo do
       "type" => message.type,
       "contents" => message.contents,
       "status" => message.status,
-      "inserted_at" => message.inserted_at,
-      "updated_at" => message.inserted_at,
+      "inserted_at" => DateTime.to_iso8601(message.inserted_at),
+      "updated_at" => DateTime.to_iso8601(message.inserted_at),
       "attachments" => get_message_attachments(message.attachments)
     }
   end
@@ -86,13 +88,12 @@ defmodule WebSockets.Repo do
     %{
       "id" => post.id,
       "user_id" => post.user_id,
-      "tellzones_id" => post.tellzones_id,
       "category_id" => post.category_id,
       "title" => post.title,
       "contents" => post.contents,
-      "inserted_at" => post.inserted_at,
-      "updated_at" => post.updated_at,
-      "expired_at" => post.expired_at,
+      "inserted_at" => DateTime.to_iso8601(post.inserted_at),
+      "updated_at" => DateTime.to_iso8601(post.updated_at),
+      "expired_at" => DateTime.to_iso8601(post.expired_at),
       "attachments" => get_post_attachments(post.attachments)
     }
   end
@@ -107,8 +108,8 @@ defmodule WebSockets.Repo do
           "string_original" => attachment.string_original,
           "string_preview" => attachment.string_preview,
           "position" => attachment.position,
-          "inserted_at" => attachment.inserted_at,
-          "updated_at" => attachment.updated_at
+          "inserted_at" => DateTime.to_iso8601(attachment.inserted_at),
+          "updated_at" => DateTime.to_iso8601(attachment.updated_at)
         }
       end
     )
@@ -244,12 +245,12 @@ defmodule WebSockets.Repo.Message do
       Schema.field(:is_suppressed, :boolean)
       Schema.field(:inserted_at, Ecto.DateTime)
       Schema.field(:updated_at, Ecto.DateTime)
-
       Schema.belongs_to(:user_destination, WebSockets.Repo.User)
       Schema.belongs_to(:user_source, WebSockets.Repo.User)
       Schema.belongs_to(:user_status, WebSockets.Repo.UserStatus)
       Schema.belongs_to(:master_tell, WebSockets.Repo.MasterTell)
       Schema.belongs_to(:post, WebSockets.Repo.Post)
+      Schema.has_many(:attachments, WebSockets.Repo.MessageAttachment)
     )
   )
 end
@@ -339,6 +340,29 @@ defmodule WebSockets.Repo.Post do
       Schema.field(:expired_at, Ecto.DateTime)
       Schema.belongs_to(:user, WebSockets.Repo.User)
       Schema.belongs_to(:category, WebSockets.Repo.Category)
+      Schema.has_many(:attachments, WebSockets.Repo.PostAttachment)
+    )
+  )
+end
+
+defmodule WebSockets.Repo.PostAttachment do
+  @moduledoc false
+
+  alias Ecto.Schema, as: Schema
+
+  use Ecto.Schema
+
+  Schema.schema(
+    "api_posts_attachments",
+    do: (
+      Schema.field(:type, :string)
+      Schema.field(:string_original, :string)
+      Schema.field(:string_preview, :string)
+      Schema.field(:position, :integer)
+      Schema.field(:inserted_at, Ecto.DateTime)
+      Schema.field(:updated_at, Ecto.DateTime)
+      Schema.belongs_to(:post, WebSockets.Repo.Post)
+      Schema.has_many(:attachments, WebSockets.Repo.PostAttachment)
     )
   )
 end

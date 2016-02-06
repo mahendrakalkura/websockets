@@ -152,11 +152,11 @@ defmodule WebSockets.RabbitMQ do
         |> Query.where(id: ^id)
         |> Query.preload([
           :master_tell,
-          :post,
           :attachments,
           user_source: :settings,
           user_destination: :settings,
-          user_status: :attachments
+          user_status: :attachments,
+          post: :attachments
         ])
         |> Repo.one()
         |> messages_2()
@@ -175,30 +175,33 @@ defmodule WebSockets.RabbitMQ do
     Kernel.spawn(fn() -> messages_3(message, "destination", "source") end)
   end
 
-  def messages_3(message, source, destination) do
-    Enum.each(
-      Clients.select_any(message[destination <> "_" <> "id"]), fn(pid) -> messages_4(message, source, pid) end
-    )
+  def messages_3(message, "source", "destination") do
+    Enum.each(Clients.select_any(message.user_destination_id), fn(pid) -> messages_4(message, "user_source", pid) end)
   end
 
-  def messages_4(message, source, pid) do
+  def messages_3(message, "destination", "source") do
+    Enum.each(Clients.select_any(message.user_source_id), fn(pid) -> messages_4(message, "user_destination", pid) end)
+  end
+
+  def messages_4(message, key, pid) do
     Kernel.spawn(
       fn() ->
         message = Repo.get_message(message)
-        unless message[source]["settings"]["email"] do
-          Kernel.put_in(message, [source, "email"], nil)
+        IO.inspect message
+        unless message[key]["settings"]["email"] do
+          Kernel.put_in(message, [key, "email"], nil)
         end
-        unless message[source]["settings"]["last_name"] do
-          Kernel.put_in(message, [source, "last_name"], nil)
+        unless message[key]["settings"]["last_name"] do
+          Kernel.put_in(message, [key, "last_name"], nil)
         end
-        unless message[source]["settings"]["phone"] do
-          Kernel.put_in(message, [source, "phone"], nil)
+        unless message[key]["settings"]["phone"] do
+          Kernel.put_in(message, [key, "phone"], nil)
         end
-        unless message[source]["settings"]["photo"] do
-          Kernel.put_in(message, [source, "photo_original"], nil)
+        unless message[key]["settings"]["photo"] do
+          Kernel.put_in(message, [key, "photo_original"], nil)
         end
-        unless message[source]["settings"]["photo"] do
-          Kernel.put_in(message, [source, "photo_preview"], nil)
+        unless message[key]["settings"]["photo"] do
+          Kernel.put_in(message, [key, "photo_preview"], nil)
         end
         message = Kernel.update_in(message["user_source"], &Map.delete(&1, "settings"))
         message = Kernel.update_in(message["user_destination"], &Map.delete(&1, "settings"))
