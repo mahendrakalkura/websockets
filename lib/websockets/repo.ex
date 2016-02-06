@@ -294,6 +294,7 @@ defmodule WebSockets.Repo.Message do
   def changeset(message, parameters \\ :empty) do
     message
     |> Changeset.cast(parameters, @required_fields, @optional_fields)
+    |> Changeset.cast_assoc(:attachments, required: true)
     |> timestamp()
     |> validate_user_destination_id()
     |> validate_post_id()
@@ -446,6 +447,10 @@ end
 defmodule WebSockets.Repo.MessageAttachment do
   @moduledoc false
 
+  @optional_fields ~w()
+  @required_fields ~w(string position)
+
+  alias Ecto.Changeset, as: Changeset
   alias Ecto.Schema, as: Schema
 
   use Ecto.Schema
@@ -458,6 +463,11 @@ defmodule WebSockets.Repo.MessageAttachment do
       Schema.belongs_to(:message, WebSockets.Repo.Message)
     )
   )
+
+  def changeset(attachment, parameters \\ :empty) do
+    attachment
+    |> Changeset.cast(parameters, @required_fields, @optional_fields)
+  end
 end
 
 defmodule WebSockets.Repo.Network do
