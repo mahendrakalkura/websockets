@@ -208,13 +208,17 @@ defmodule WebSockets.Router do
   def messages_4(pid, changeset) do
     case Repo.insert(changeset) do
       {:ok, message} ->
-        {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
-        {:ok, channel} = Channel.open(connection)
-        Basic.publish(
-          channel,
-          WebSockets.get_exchange(),
-          WebSockets.get_routing_key(),
-          "{\"subject\":\"messages\",\"body\":\"#{message.id}\"}"
+        Kernel.spawn(
+          fn() ->
+            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
+            {:ok, channel} = Channel.open(connection)
+            Basic.publish(
+              channel,
+              WebSockets.get_exchange(),
+              WebSockets.get_routing_key(),
+              "{\"subject\":\"messages\",\"body\":\"#{message.id}\"}"
+            )
+          end
         )
       {:error, changeset} ->
         Kernel.spawn(
@@ -324,13 +328,17 @@ defmodule WebSockets.Router do
   def users_locations_post_4(pid, changeset) do
     case Repo.insert(changeset) do
       {:ok, user_location} ->
-        {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
-        {:ok, channel} = Channel.open(connection)
-        Basic.publish(
-          channel,
-          WebSockets.get_exchange(),
-          WebSockets.get_routing_key(),
-          "{\"subject\":\"users_locations\",\"body\":\"#{user_location.id}\"}"
+        Kernel.spawn(
+          fn() ->
+            {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
+            {:ok, channel} = Channel.open(connection)
+            Basic.publish(
+              channel,
+              WebSockets.get_exchange(),
+              WebSockets.get_routing_key(),
+              "{\"subject\":\"users_locations\",\"body\":\"#{user_location.id}\"}"
+            )
+          end
         )
       {:error, changeset} ->
         Kernel.spawn(
