@@ -11,7 +11,7 @@
 ```
 $ mkdir websockets
 $ cd websockets
-$ git clone git@bitbucket.org:kalkura/websockets.git .
+$ git clone git@bitbucket.org:tellecast/websockets.git .
 $ cp --archive config/config.exs.sample config/config.exs # edit as required
 $ mix local.hex
 $ mix deps.get
