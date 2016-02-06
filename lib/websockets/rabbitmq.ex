@@ -21,6 +21,7 @@ defmodule WebSockets.RabbitMQ do
   require JSX
   require Kernel
   require List
+  require Map
   require WebSockets
 
   use GenServer
@@ -170,17 +171,39 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def messages_2(message) do
-    Kernel.spawn(
-      Enum.each(
-        Clients.select_any(message.user_source_id),
-        fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"messages", Repo.get_message(message)}) end) end
-      )
+    Kernel.spawn(fn() -> messages_3(message, "source", "destination") end)
+    Kernel.spawn(fn() -> messages_3(message, "destination", "source") end)
+  end
+
+  def messages_3(message, source, destination) do
+    Enum.each(
+      Clients.select_any(message[destination <> "_" <> "id"]), fn(pid) -> messages_4(message, source, pid) end
     )
+  end
+
+  def messages_4(message, source, pid) do
     Kernel.spawn(
-      Enum.each(
-        Clients.select_any(message.user_destination_id),
-        fn(pid) -> Kernel.spawn(fn() -> Kernel.send(pid, {"messages", Repo.get_message(message)}) end) end
-      )
+      fn() ->
+        message = Repo.get_message(message)
+        unless message[source]["settings"]["email"] do
+          Kernel.put_in(message, [source, "email"], nil)
+        end
+        unless message[source]["settings"]["last_name"] do
+          Kernel.put_in(message, [source, "last_name"], nil)
+        end
+        unless message[source]["settings"]["phone"] do
+          Kernel.put_in(message, [source, "phone"], nil)
+        end
+        unless message[source]["settings"]["photo"] do
+          Kernel.put_in(message, [source, "photo_original"], nil)
+        end
+        unless message[source]["settings"]["photo"] do
+          Kernel.put_in(message, [source, "photo_preview"], nil)
+        end
+        message = Kernel.update_in(message["user_source"], &Map.delete(&1, "settings"))
+        message = Kernel.update_in(message["user_destination"], &Map.delete(&1, "settings"))
+        Kernel.send(pid, {"messages", message})
+      end
     )
   end
 
