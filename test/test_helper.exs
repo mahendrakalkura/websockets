@@ -1,3 +1,1 @@
-require ExUnit
-
-ExUnit.start()
+ExUnit.start
