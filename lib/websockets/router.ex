@@ -13,10 +13,7 @@ defmodule WebSockets.Router do
   alias WebSockets.Repo.UserLocation, as: UserLocation
   alias WebSockets.Utilities, as: Utilities
 
-  require Integer
   require JSX
-  require Map
-  require String
   require WebSockets
 
   @behaviour :cowboy_websocket_handler

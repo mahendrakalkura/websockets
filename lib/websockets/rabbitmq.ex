@@ -20,8 +20,6 @@ defmodule WebSockets.RabbitMQ do
 
   require Ecto.Query
   require JSX
-  require List
-  require Map
   require WebSockets
 
   def start_link() do
