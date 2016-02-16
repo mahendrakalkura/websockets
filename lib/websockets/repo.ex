@@ -5,8 +5,6 @@ defmodule WebSockets.Repo do
 
   alias Ecto.DateTime, as: DateTime
 
-  require Map
-
   def get_master_tell(nil) do
     nil
   end
