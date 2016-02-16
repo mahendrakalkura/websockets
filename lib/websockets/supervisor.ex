@@ -9,8 +9,6 @@ defmodule WebSockets.Supervisor do
   alias WebSockets.Repo, as: Repo
   alias WebSockets.Router, as: Router
 
-  require Application
-
   def start_link() do
     Supervisor.start_link(__MODULE__, [], [])
   end

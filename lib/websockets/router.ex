@@ -13,7 +13,6 @@ defmodule WebSockets.Router do
   alias WebSockets.Repo.UserLocation, as: UserLocation
   alias WebSockets.Utilities, as: Utilities
 
-  require Application
   require Integer
   require JSX
   require Map

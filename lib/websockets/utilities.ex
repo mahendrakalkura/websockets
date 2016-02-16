@@ -11,7 +11,6 @@ defmodule WebSockets.Utilities do
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
 
-  require Application
   require ExSentry
   require GeoPotion.Distance
   require GeoPotion.Vector

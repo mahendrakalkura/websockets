@@ -18,7 +18,6 @@ defmodule WebSockets.RabbitMQ do
   alias WebSockets.Repo.UserLocation, as: UserLocation
   alias WebSockets.Utilities, as: Utilities
 
-  require Application
   require Ecto.Query
   require JSX
   require List
