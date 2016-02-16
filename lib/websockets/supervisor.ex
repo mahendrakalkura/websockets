@@ -1,6 +1,8 @@
 defmodule WebSockets.Supervisor do
   @moduledoc false
 
+  use Supervisor
+
   alias Supervisor.Spec, as: Spec
   alias WebSockets.Clients, as: Clients
   alias WebSockets.RabbitMQ, as: RabbitMQ
@@ -8,8 +10,6 @@ defmodule WebSockets.Supervisor do
   alias WebSockets.Router, as: Router
 
   require Application
-
-  use Supervisor
 
   def start_link() do
     Supervisor.start_link(__MODULE__, [], [])

@@ -1,8 +1,6 @@
 defmodule WebSockets.Router do
   @moduledoc false
 
-  @behaviour :cowboy_websocket_handler
-
   alias Comeonin.Bcrypt, as: Bcrypt
   alias Ecto.Adapters.SQL, as: SQL
   alias ExJsonSchema.Schema, as: Schema
@@ -22,6 +20,8 @@ defmodule WebSockets.Router do
   require Map
   require String
   require WebSockets
+
+  @behaviour :cowboy_websocket_handler
 
   def init(_protocol, _request, _options) do
     {:upgrade, :protocol, :cowboy_websocket}

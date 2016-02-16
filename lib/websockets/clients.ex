@@ -1,9 +1,9 @@
 defmodule WebSockets.Clients do
   @moduledoc false
 
-  require Kernel
-
   use GenServer
+
+  require Kernel
 
   def start_link() do
     GenServer.start_link(__MODULE__, [], [])

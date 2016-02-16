@@ -1,11 +1,11 @@
 defmodule WebSockets.Repo do
   @moduledoc false
 
+  use Ecto.Repo, otp_app: :websockets
+
   alias Ecto.DateTime, as: DateTime
 
   require Map
-
-  use Ecto.Repo, otp_app: :websockets
 
   def get_master_tell(nil) do
     nil

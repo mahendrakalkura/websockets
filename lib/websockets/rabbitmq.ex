@@ -1,6 +1,8 @@
 defmodule WebSockets.RabbitMQ do
   @moduledoc false
 
+  use GenServer
+
   alias AMQP.Basic, as: Basic
   alias AMQP.Channel, as: Channel
   alias AMQP.Connection, as: Connection
@@ -23,8 +25,6 @@ defmodule WebSockets.RabbitMQ do
   require List
   require Map
   require WebSockets
-
-  use GenServer
 
   def start_link() do
     GenServer.start_link(__MODULE__, [], [])
