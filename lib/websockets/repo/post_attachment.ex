@@ -11,6 +11,5 @@ defmodule WebSockets.Repo.PostAttachment do
     field :inserted_at, Ecto.DateTime
     field :updated_at, Ecto.DateTime
     belongs_to :post, WebSockets.Repo.Post
-    has_many :attachments, WebSockets.Repo.PostAttachment
   end
 end
