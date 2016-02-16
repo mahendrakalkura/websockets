@@ -3,14 +3,13 @@ defmodule WebSockets.Repo.Message do
 
   use Ecto.Schema
 
+  import Ecto.Query
+
   alias Ecto.Changeset, as: Changeset
   alias Ecto.DateTime, as: DateTime
-  alias Ecto.Query, as: Query
   alias WebSockets.Repo, as: Repo
   alias WebSockets.Repo.Block, as: Block
   alias WebSockets.Repo.Message, as: Message
-
-  require Ecto.Query
 
   @optional_fields ~w(
     user_status_id
@@ -78,8 +77,8 @@ defmodule WebSockets.Repo.Message do
   def validate_type_1(parameters) do
     case (
       Message
-      |> Query.select([message], count(message.id))
-      |> Query.where(
+      |> select([message], count(message.id))
+      |> where(
         [message],
         (
           message.user_source_id == ^parameters.changes.user_source_id
@@ -93,8 +92,8 @@ defmodule WebSockets.Repo.Message do
           message.user_destination_id == ^parameters.changes.user_source_id
         )
       )
-      |> Query.where([message], is_nil(message.post_id))
-      |> Query.where([message], message.type in ["Response - Accepted", "Response - Rejected", "Message", "Ask"])
+      |> where([message], is_nil(message.post_id))
+      |> where([message], message.type in ["Response - Accepted", "Response - Rejected", "Message", "Ask"])
       |> Repo.one()
     ) do
       0 -> validate_type_2(parameters)
@@ -105,8 +104,8 @@ defmodule WebSockets.Repo.Message do
   def validate_type_2(parameters) do
     case (
       Message
-      |> Query.select([message], message)
-      |> Query.where(
+      |> select([message], message)
+      |> where(
         [message],
         (
           message.user_source_id == ^parameters.changes.user_source_id
@@ -120,10 +119,10 @@ defmodule WebSockets.Repo.Message do
           message.user_destination_id == ^parameters.changes.user_source_id
         )
       )
-      |> Query.where([message], is_nil(message.post_id))
-      |> Query.order_by(desc: :id)
-      |> Query.limit(1)
-      |> Query.offset(0)
+      |> where([message], is_nil(message.post_id))
+      |> order_by(desc: :id)
+      |> limit(1)
+      |> offset(0)
       |> Repo.one()
     ) do
       nil -> validate_type_3(parameters)
@@ -173,8 +172,8 @@ defmodule WebSockets.Repo.Message do
   def validate_blocks(parameters) do
     case (
       Block
-      |> Query.select([block], count(block.id))
-      |> Query.where(
+      |> select([block], count(block.id))
+      |> where(
         [block],
         (
           block.user_source_id == ^parameters.changes.user_source_id
