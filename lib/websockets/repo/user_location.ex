@@ -7,15 +7,7 @@ defmodule WebSockets.Repo.UserLocation do
   alias Ecto.DateTime, as: DateTime
 
   @optional_fields ~w(
-    user_id
-    network_id
-    tellzone_id
-    location
-    accuracies_horizontal
-    accuracies_vertical
-    bearing
-    is_casting
-    timestamp
+    user_id network_id tellzone_id location accuracies_horizontal accuracies_vertical bearing is_casting timestamp
   )
   @required_fields ~w(point)
 
