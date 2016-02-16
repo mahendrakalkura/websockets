@@ -34,10 +34,10 @@ defmodule WebSockets.RabbitMQ do
     {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
     {:ok, channel} = Channel.open(connection)
     Basic.qos(channel, prefetch_count: 1)
-    Exchange.direct(channel, WebSockets.get_exchange(), durable: true)
-    Queue.declare(channel, WebSockets.get_queue(), durable: true)
-    Queue.bind(channel, WebSockets.get_queue(), WebSockets.get_exchange())
-    {:ok, _} = Basic.consume(channel, WebSockets.get_queue())
+    Exchange.direct(channel, WebSockets.get_exchange(:websockets), durable: true)
+    Queue.declare(channel, WebSockets.get_queue(:websockets), durable: true)
+    Queue.bind(channel, WebSockets.get_queue(:websockets), WebSockets.get_exchange(:websockets))
+    {:ok, _} = Basic.consume(channel, WebSockets.get_queue(:websockets))
     {:ok, channel}
   end
 
@@ -346,13 +346,13 @@ defmodule WebSockets.RabbitMQ do
     end
     if Kernel.length(user_ids) do
       Utilities.publish(
-        WebSockets.get_exchange(),
-        WebSockets.get_routing_key(),
+        WebSockets.get_exchange(:websockets),
+        WebSockets.get_routing_key(:websockets),
         %{"user_ids" => user_ids, "subject" => "master_tells", "body" => %{"type" => "home"}}
       )
       Utilities.publish(
-        WebSockets.get_exchange(),
-        WebSockets.get_routing_key(),
+        WebSockets.get_exchange(:websockets),
+        WebSockets.get_routing_key(:websockets),
         %{
           "user_ids" => user_ids,
           "subject" => "master_tells",
@@ -363,8 +363,8 @@ defmodule WebSockets.RabbitMQ do
         }
       )
       Utilities.publish(
-        WebSockets.get_exchange(),
-        WebSockets.get_routing_key(),
+        WebSockets.get_exchange(:websockets),
+        WebSockets.get_routing_key(:websockets),
         %{
           "user_ids" => user_ids,
           "subject" => "master_tells",

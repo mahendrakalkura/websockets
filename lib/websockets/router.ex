@@ -208,8 +208,8 @@ defmodule WebSockets.Router do
         Kernel.spawn(
           fn() ->
             Utilities.publish(
-              WebSockets.get_exchange(),
-              WebSockets.get_routing_key(),
+              WebSockets.get_exchange(:websockets),
+              WebSockets.get_routing_key(:websockets),
               %{"subject" => "messages", "body" => message.id}
             )
           end
@@ -295,8 +295,8 @@ defmodule WebSockets.Router do
         Kernel.spawn(
           fn() ->
             Utilities.publish(
-              WebSockets.get_exchange(),
-              WebSockets.get_routing_key(),
+              WebSockets.get_exchange(:websockets),
+              WebSockets.get_routing_key(:websockets),
               %{"subject" => "blocks", "body" => block.id}
             )
           end
@@ -539,8 +539,8 @@ defmodule WebSockets.Router do
         Kernel.spawn(
           fn() ->
             Utilities.publish(
-              WebSockets.get_exchange(),
-              WebSockets.get_routing_key(),
+              WebSockets.get_exchange(:websockets),
+              WebSockets.get_routing_key(:websockets),
               %{"subject" => "users_locations", "body" => user_location.id}
             )
           end
