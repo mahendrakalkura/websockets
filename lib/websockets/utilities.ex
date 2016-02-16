@@ -16,7 +16,6 @@ defmodule WebSockets.Utilities do
   require GeoPotion.Distance
   require GeoPotion.Vector
   require JSX
-  require Kernel
   require Logger
 
   def log(module, direction, pid, subject) do
@@ -46,11 +45,11 @@ defmodule WebSockets.Utilities do
     Distance.to_ft(Vector.calculate(%{longitude: a, latitude: b}, %{longitude: c, latitude: d}).distance).value
   end
 
-  def get_id(integer) when Kernel.is_integer(integer) do
+  def get_id(integer) when is_integer(integer) do
      :io_lib.format("~9B", [integer])
   end
 
-  def get_id(pid) when Kernel.is_pid(pid) do
+  def get_id(pid) when is_pid(pid) do
     Clients.select_one(pid)
   end
 

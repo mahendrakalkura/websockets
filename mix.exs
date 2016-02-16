@@ -3,7 +3,7 @@ defmodule WebSockets.Mixfile do
 
   use Mix.Project
 
-  def application do
+  def application() do
     [
       applications: [
         :amqp,
@@ -26,7 +26,7 @@ defmodule WebSockets.Mixfile do
     ]
   end
 
-  def deps do
+  def deps() do
     [
       {:amqp, "0.1.4"},
       {:comeonin, "2.1.0"},
@@ -45,7 +45,7 @@ defmodule WebSockets.Mixfile do
     ]
   end
 
-  def project do
+  def project() do
     [
       app: :websockets,
       deps: deps,

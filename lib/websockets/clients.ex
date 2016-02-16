@@ -3,8 +3,6 @@ defmodule WebSockets.Clients do
 
   use GenServer
 
-  require Kernel
-
   def start_link() do
     GenServer.start_link(__MODULE__, [], [])
   end
@@ -33,11 +31,11 @@ defmodule WebSockets.Clients do
     :ets.insert(:ets, {key, value})
   end
 
-  def delete(item) when Kernel.is_pid(item) do
+  def delete(item) when is_pid(item) do
     :ets.match_delete(:ets, {item, :_})
   end
 
-  def delete(item) when Kernel.is_bitstring(item) do
+  def delete(item) when is_bitstring(item) do
     :ets.match_delete(:ets, {:_, item})
   end
 end

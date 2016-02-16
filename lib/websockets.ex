@@ -1,7 +1,7 @@
 defmodule WebSockets do
   @moduledoc false
 
-  def start(_type, _arguments), do: WebSockets.Supervisor.start_link
+  def start(_type, _arguments), do: WebSockets.Supervisor.start_link()
 
   def get_exchange(:push_notifications), do: "api.tasks.push_notifications"
   def get_exchange(:websockets), do: "api.management.commands.websockets"

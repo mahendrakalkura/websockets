@@ -16,7 +16,6 @@ defmodule WebSockets.Router do
   require Application
   require Integer
   require JSX
-  require Kernel
   require Map
   require String
   require WebSockets
@@ -32,117 +31,117 @@ defmodule WebSockets.Router do
   end
 
   def websocket_handle({:text, "ping"}, request, state) do
-    pid = Kernel.self()
-    Kernel.spawn(fn() -> Utilities.log("Router", "In", pid, "ping") end)
-    Kernel.spawn(fn() -> Utilities.log("Router", "Out", pid, "pong") end)
+    pid = self()
+    spawn(fn() -> Utilities.log("Router", "In", pid, "ping") end)
+    spawn(fn() -> Utilities.log("Router", "Out", pid, "pong") end)
     {:reply, {:text, "pong"}, request, state}
   end
 
   def websocket_handle({:text, "pong"}, request, state) do
-    pid = Kernel.self()
-    Kernel.spawn(fn() -> Utilities.log("Router", "In", pid, "pong") end)
-    Kernel.spawn(fn() -> Utilities.log("Router", "Out", pid, "ping") end)
+    pid = self()
+    spawn(fn() -> Utilities.log("Router", "In", pid, "pong") end)
+    spawn(fn() -> Utilities.log("Router", "Out", pid, "ping") end)
     {:reply, {:text, "ping"}, request, state}
   end
 
   def websocket_handle({:text, contents}, request, state) do
-    pid = Kernel.self()
+    pid = self()
     case JSX.decode(contents) do
       {:ok, %{"subject" => subject, "body" => body}} ->
-        Kernel.spawn(fn() -> handle(pid, subject, body) end)
+        spawn(fn() -> handle(pid, subject, body) end)
       {:ok, _} ->
-        Kernel.spawn(fn() -> Utilities.log("websocket_handle()", %{"contents" => contents}) end)
+        spawn(fn() -> Utilities.log("websocket_handle()", %{"contents" => contents}) end)
       {:error, reason} ->
-        Kernel.spawn(fn() -> Utilities.log("websocket_handle()", %{"contents" => contents, "reason" => reason}) end)
+        spawn(fn() -> Utilities.log("websocket_handle()", %{"contents" => contents, "reason" => reason}) end)
     end
     {:ok, request, state}
   end
 
   def websocket_info({subject, body, action}, request, state) do
-    pid = Kernel.self()
-    Kernel.spawn(fn() -> Utilities.log("Router", "Out", pid, subject) end)
+    pid = self()
+    spawn(fn() -> Utilities.log("Router", "Out", pid, subject) end)
     {:ok, message} = JSX.encode(%{"subject" => subject, "body" => body, "action" => action})
     {:reply, {:text, message}, request, state}
   end
 
   def websocket_info({subject, body}, request, state) do
-    pid = Kernel.self()
-    Kernel.spawn(fn() -> Utilities.log("Router", "Out", pid, subject) end)
+    pid = self()
+    spawn(fn() -> Utilities.log("Router", "Out", pid, subject) end)
     {:ok, message} = JSX.encode(%{"subject" => subject, "body" => body})
     {:reply, {:text, message}, request, state}
   end
 
   def websocket_info(contents, request, state) do
-    Kernel.spawn(fn() -> Utilities.log("websocket_info()", %{"contents" => contents}) end)
+    spawn(fn() -> Utilities.log("websocket_info()", %{"contents" => contents}) end)
     {:ok, request, state}
   end
 
   def websocket_terminate(reason, _request, _state) do
-    pid = Kernel.self()
-    Kernel.spawn(fn() -> Clients.delete(pid) end)
-    Kernel.spawn(fn() -> terminate(reason) end)
+    pid = self()
+    spawn(fn() -> Clients.delete(pid) end)
+    spawn(fn() -> terminate(reason) end)
     :ok
   end
 
   def handle(pid, "messages", body) do
-    Kernel.spawn(fn() -> Utilities.log("Router", "In", pid, "messages") end)
-    Kernel.spawn(fn() -> messages_1(pid, body) end)
+    spawn(fn() -> Utilities.log("Router", "In", pid, "messages") end)
+    spawn(fn() -> messages_1(pid, body) end)
   end
 
   def handle(pid, "users", body) do
-    Kernel.spawn(fn() -> Utilities.log("Router", "In", pid, "users") end)
-    Kernel.spawn(fn() -> users_1(pid, body) end)
+    spawn(fn() -> Utilities.log("Router", "In", pid, "users") end)
+    spawn(fn() -> users_1(pid, body) end)
   end
 
   def handle(pid, "users_locations_post", body) do
-    Kernel.spawn(fn() -> Utilities.log("Router", "In", pid, "users_locations_post") end)
-    Kernel.spawn(fn() -> users_locations_post_1(pid, body) end)
+    spawn(fn() -> Utilities.log("Router", "In", pid, "users_locations_post") end)
+    spawn(fn() -> users_locations_post_1(pid, body) end)
   end
 
   def handle(_pid, subject, body) do
-    Kernel.spawn(fn() -> Utilities.log("handle()", %{"subject" => subject, "body" => body}) end)
+    spawn(fn() -> Utilities.log("handle()", %{"subject" => subject, "body" => body}) end)
   end
 
   def terminate({:error, :closed}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, :closed}"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, :closed}"}) end)
   end
 
   def terminate({:error, :badencoding}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, :badencoding}"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, :badencoding}"}) end)
   end
 
   def terminate({:error, :badframe}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, :badframe}"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, :badframe}"}) end)
   end
 
   def terminate({:error, atom}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, #{atom}}"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:error, #{atom}}"}) end)
   end
 
   def terminate({:normal, :shutdown}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:normal, :shutdown}"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:normal, :shutdown}"}) end)
   end
 
   def terminate({:normal, :timeout}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:normal, :timeout}"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:normal, :timeout}"}) end)
   end
 
   def terminate({:remote, :closed}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:remote, :closed}"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "{:remote, :closed}"}) end)
   end
 
   def terminate({:remote, prefix, suffix}) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => %{"prefix" => prefix, "suffix" => suffix}}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => %{"prefix" => prefix, "suffix" => suffix}}) end)
   end
 
   def terminate(_) do
-    Kernel.spawn(fn() -> Utilities.log("terminate()", %{"reason" => "_"}) end)
+    spawn(fn() -> Utilities.log("terminate()", %{"reason" => "_"}) end)
   end
 
   def messages_1(pid, body) do
     case Utilities.get_id(pid) do
-      0 -> Kernel.send(pid, {"messages", %{"body" => %{"errors" => "Invalid User"}}})
-      id -> Kernel.spawn(fn() -> messages_2(pid, id, body) end)
+      0 -> send(pid, {"messages", %{"body" => %{"errors" => "Invalid User"}}})
+      id -> spawn(fn() -> messages_2(pid, id, body) end)
     end
   end
 
@@ -178,9 +177,9 @@ defmodule WebSockets.Router do
     })
     case Validator.validate(schema, body) do
       {:error, errors} ->
-        Kernel.send(pid, {"messages", %{"body" => %{"errors" => errors}}})
+        send(pid, {"messages", %{"body" => %{"errors" => errors}}})
       :ok ->
-        Kernel.spawn(fn() -> messages_3(pid, id, body) end)
+        spawn(fn() -> messages_3(pid, id, body) end)
     end
   end
 
@@ -188,7 +187,7 @@ defmodule WebSockets.Router do
     changeset = Message.changeset(%Message{}, Map.merge(body, %{"user_source_id" => id}))
     case changeset.valid? do
       false ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.log(
               "messages_3()",
@@ -196,16 +195,16 @@ defmodule WebSockets.Router do
             )
           end
         )
-        Kernel.send(pid, {"messages", %{"body" => %{"errors" => changeset.errors}}})
+        send(pid, {"messages", %{"body" => %{"errors" => changeset.errors}}})
       _ ->
-        Kernel.spawn(fn() -> messages_4(pid, changeset) end)
+        spawn(fn() -> messages_4(pid, changeset) end)
     end
   end
 
   def messages_4(pid, changeset) do
     case Repo.insert(changeset) do
       {:ok, message} ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.publish(
               WebSockets.get_exchange(:websockets),
@@ -214,9 +213,9 @@ defmodule WebSockets.Router do
             )
           end
         )
-        Kernel.spawn(fn() -> messages_5(message) end)
+        spawn(fn() -> messages_5(message) end)
       {:error, changeset} ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.log(
               "messages_4()",
@@ -224,20 +223,20 @@ defmodule WebSockets.Router do
             )
           end
         )
-        Kernel.send(pid, {"messages", %{"body" => %{"errors" => "Invalid Body"}}})
+        send(pid, {"messages", %{"body" => %{"errors" => "Invalid Body"}}})
     end
   end
 
   def messages_5(message = %{:type => "Response - Blocked"}) do
     case message do
       %{:type => "Response - Rejected"} ->
-        Kernel.spawn(fn() -> messages_6(message) end)
+        spawn(fn() -> messages_6(message) end)
       %{:type => "Response - Blocked"} ->
-        Kernel.spawn(fn() -> messages_6(message) end)
-        Kernel.spawn(fn() -> messages_7(message) end)
+        spawn(fn() -> messages_6(message) end)
+        spawn(fn() -> messages_7(message) end)
       _ -> nil
     end
-    Kernel.spawn(fn() -> messages_9(message) end)
+    spawn(fn() -> messages_9(message) end)
   end
 
   def messages_6(message) do
@@ -263,11 +262,11 @@ defmodule WebSockets.Router do
       []
     ) do
       {:ok, %{rows: rows, num_rows: 1}} -> ids = ids ++ [Enum.at(Enum.at(rows, 0))]
-      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+      {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
     case SQL.query(Repo, "UPDATE api_messages SET is_suppressed = $1 WHERE id = ANY($2)", [true, ids], []) do
       {:ok, _} -> nil
-      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+      {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
   end
 
@@ -277,7 +276,7 @@ defmodule WebSockets.Router do
     )
     case changeset.valid? do
       false ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.log(
               "messages_7()",
@@ -285,14 +284,14 @@ defmodule WebSockets.Router do
             )
           end
         )
-      _ -> Kernel.spawn(fn() -> messages_8(changeset) end)
+      _ -> spawn(fn() -> messages_8(changeset) end)
     end
   end
 
   def messages_8(changeset) do
     case Repo.insert(changeset) do
       {:ok, block} ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.publish(
               WebSockets.get_exchange(:websockets),
@@ -302,7 +301,7 @@ defmodule WebSockets.Router do
           end
         )
       {:error, changeset} ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.log(
               "messages_7()",
@@ -341,7 +340,7 @@ defmodule WebSockets.Router do
           }
         )
       {:ok, _} -> nil
-      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+      {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
   end
 
@@ -373,7 +372,7 @@ defmodule WebSockets.Router do
           }
         )
       {:ok, _} -> nil
-      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+      {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
   end
 
@@ -405,7 +404,7 @@ defmodule WebSockets.Router do
           }
         )
       {:ok, _} -> nil
-      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
+      {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
     end
   end
 
@@ -437,50 +436,50 @@ defmodule WebSockets.Router do
           }
         )
       {:ok, _} -> nil
-      {:error, exception} -> Kernel.spawn(fn() -> Utilities.log("messages_9()", %{"exception" => exception}) end)
+      {:error, exception} -> spawn(fn() -> Utilities.log("messages_9()", %{"exception" => exception}) end)
     end
   end
 
   def users_1(pid, token) do
     case String.split(token, Application.get_env(:websockets, :separator), parts: 2, trim: true) do
       [id, hash] ->
-        Kernel.spawn(fn() -> users_2(pid, id, hash) end)
+        spawn(fn() -> users_2(pid, id, hash) end)
       _ ->
-        Kernel.send(pid, {"users", false})
+        send(pid, {"users", false})
     end
   end
 
   def users_2(pid, id, hash) do
     if Bcrypt.checkpw(id <> Application.get_env(:websockets, :secret), hash) do
-      Kernel.spawn(fn() -> users_3(pid, id) end)
+      spawn(fn() -> users_3(pid, id) end)
     else
-      Kernel.send(pid, {"users", false})
+      send(pid, {"users", false})
     end
   end
 
   def users_3(pid, id) do
     case Integer.parse(id) do
       {id, _} ->
-        Kernel.spawn(fn() -> users_4(pid, id) end)
+        spawn(fn() -> users_4(pid, id) end)
       _ ->
-        Kernel.send(pid, {"users", false})
+        send(pid, {"users", false})
     end
   end
 
   def users_4(pid, id) do
     case Repo.get(User, id) do
       nil ->
-        Kernel.send(pid, {"users", false})
+        send(pid, {"users", false})
       user ->
-        Kernel.spawn(fn() -> Clients.insert(pid, user.id) end)
-        Kernel.send(pid, {"users", true})
+        spawn(fn() -> Clients.insert(pid, user.id) end)
+        send(pid, {"users", true})
     end
   end
 
   def users_locations_post_1(pid, body) do
     case Utilities.get_id(pid) do
       0 ->
-        Kernel.send(pid, {"users_locations", %{"body" => %{"errors" => "Invalid User"}}})
+        send(pid, {"users_locations", %{"body" => %{"errors" => "Invalid User"}}})
       id ->
         users_locations_post_2(pid, id, body)
     end
@@ -507,9 +506,9 @@ defmodule WebSockets.Router do
     })
     case Validator.validate(schema, body) do
       {:error, errors} ->
-        Kernel.send(pid, {"users_locations", %{"body" => %{"errors" => errors}}})
+        send(pid, {"users_locations", %{"body" => %{"errors" => errors}}})
       :ok ->
-        Kernel.spawn(fn() -> users_locations_post_3(pid, id, body) end)
+        spawn(fn() -> users_locations_post_3(pid, id, body) end)
     end
   end
 
@@ -519,7 +518,7 @@ defmodule WebSockets.Router do
     )
     case changeset.valid? do
       false ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.log(
               "users_locations_post_3()",
@@ -527,16 +526,16 @@ defmodule WebSockets.Router do
             )
           end
         )
-        Kernel.send(pid, {"users_locations", %{"body" => %{"errors" => changeset.errors}}})
+        send(pid, {"users_locations", %{"body" => %{"errors" => changeset.errors}}})
       _ ->
-        Kernel.spawn(fn() -> users_locations_post_4(pid, changeset) end)
+        spawn(fn() -> users_locations_post_4(pid, changeset) end)
     end
   end
 
   def users_locations_post_4(pid, changeset) do
     case Repo.insert(changeset) do
       {:ok, user_location} ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.publish(
               WebSockets.get_exchange(:websockets),
@@ -546,7 +545,7 @@ defmodule WebSockets.Router do
           end
         )
       {:error, changeset} ->
-        Kernel.spawn(
+        spawn(
           fn() ->
             Utilities.log(
               "users_locations_post_4()",
@@ -554,7 +553,7 @@ defmodule WebSockets.Router do
             )
           end
         )
-        Kernel.send(pid, {"users_locations", %{"body" => %{"errors" => "Invalid Body"}}})
+        send(pid, {"users_locations", %{"body" => %{"errors" => "Invalid Body"}}})
     end
   end
 end
