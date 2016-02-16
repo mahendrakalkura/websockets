@@ -6,7 +6,6 @@ defmodule WebSockets.Repo.Message do
   alias Ecto.Changeset, as: Changeset
   alias Ecto.DateTime, as: DateTime
   alias Ecto.Query, as: Query
-  alias Ecto.Schema, as: Schema
   alias WebSockets.Repo, as: Repo
   alias WebSockets.Repo.Block, as: Block
   alias WebSockets.Repo.Message, as: Message
@@ -27,25 +26,22 @@ defmodule WebSockets.Repo.Message do
   )
   @required_fields ~w(user_source_id user_destination_id type)
 
-  Schema.schema(
-    "api_messages",
-    do: (
-      Schema.field(:user_source_is_hidden, :boolean, default: false)
-      Schema.field(:user_destination_is_hidden, :boolean, default: false)
-      Schema.field(:type, :string)
-      Schema.field(:contents, :string, default: "")
-      Schema.field(:status, :string, default: "Unread")
-      Schema.field(:is_suppressed, :boolean, default: false)
-      Schema.field(:inserted_at, Ecto.DateTime)
-      Schema.field(:updated_at, Ecto.DateTime)
-      Schema.belongs_to(:user_destination, WebSockets.Repo.User)
-      Schema.belongs_to(:user_source, WebSockets.Repo.User)
-      Schema.belongs_to(:user_status, WebSockets.Repo.UserStatus)
-      Schema.belongs_to(:master_tell, WebSockets.Repo.MasterTell)
-      Schema.belongs_to(:post, WebSockets.Repo.Post)
-      Schema.has_many(:attachments, WebSockets.Repo.MessageAttachment)
-    )
-  )
+  schema "api_messages" do
+    field :user_source_is_hidden, :boolean, default: false
+    field :user_destination_is_hidden, :boolean, default: false
+    field :type, :string
+    field :contents, :string, default: ""
+    field :status, :string, default: "Unread"
+    field :is_suppressed, :boolean, default: false
+    field :inserted_at, Ecto.DateTime
+    field :updated_at, Ecto.DateTime
+    belongs_to :user_destination, WebSockets.Repo.User
+    belongs_to :user_source, WebSockets.Repo.User
+    belongs_to :user_status, WebSockets.Repo.UserStatus
+    belongs_to :master_tell, WebSockets.Repo.MasterTell
+    belongs_to :post, WebSockets.Repo.Post
+    has_many :attachments, WebSockets.Repo.MessageAttachment
+  end
 
   def changeset(message, parameters \\ :empty) do
     message

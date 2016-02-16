@@ -3,18 +3,13 @@ defmodule WebSockets.Repo.MasterTell do
 
   use Ecto.Schema
 
-  alias Ecto.Schema, as: Schema
-
-  Schema.schema(
-    "api_master_tells",
-    do: (
-      Schema.field(:contents, :string)
-      Schema.field(:position, :integer)
-      Schema.field(:is_visible, :boolean)
-      Schema.field(:inserted_at, Ecto.DateTime)
-      Schema.field(:updated_at, Ecto.DateTime)
-      Schema.belongs_to(:created_by, WebSockets.Repo.User)
-      Schema.belongs_to(:owned_by, WebSockets.Repo.User)
-    )
-  )
+  schema "api_master_tells" do
+    field :contents, :string
+    field :position, :integer
+    field :is_visible, :boolean
+    field :inserted_at, Ecto.DateTime
+    field :updated_at, Ecto.DateTime
+    belongs_to :created_by, WebSockets.Repo.User
+    belongs_to :owned_by, WebSockets.Repo.User
+  end
 end

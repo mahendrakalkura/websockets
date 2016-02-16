@@ -4,19 +4,15 @@ defmodule WebSockets.Repo.MessageAttachment do
   use Ecto.Schema
 
   alias Ecto.Changeset, as: Changeset
-  alias Ecto.Schema, as: Schema
 
   @optional_fields ~w()
   @required_fields ~w(string position)
 
-  Schema.schema(
-    "api_messages_attachments",
-    do: (
-      Schema.field(:string, :string)
-      Schema.field(:position, :integer)
-      Schema.belongs_to(:message, WebSockets.Repo.Message)
-    )
-  )
+  schema "api_messages_attachments" do
+    field :string, :string
+    field :position, :integer
+    belongs_to :message, WebSockets.Repo.Message
+  end
 
   def changeset(attachment, parameters \\ :empty) do
     attachment

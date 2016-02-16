@@ -5,19 +5,15 @@ defmodule WebSockets.Repo.Block do
 
   alias Ecto.Changeset, as: Changeset
   alias Ecto.DateTime, as: DateTime
-  alias Ecto.Schema, as: Schema
 
   @optional_fields ~w(timestamp)
   @required_fields ~w(user_source_id user_destination_id)
 
-  Schema.schema(
-    "api_blocks",
-    do: (
-      Schema.field(:timestamp, Ecto.DateTime)
-      Schema.belongs_to(:user_source, WebSockets.Repo.User)
-      Schema.belongs_to(:user_destination, WebSockets.Repo.User)
-    )
-  )
+  schema "api_blocks" do
+    field :timestamp, Ecto.DateTime
+    belongs_to :user_source, WebSockets.Repo.User
+    belongs_to :user_destination, WebSockets.Repo.User
+  end
 
   def changeset(block, parameters \\ :empty) do
     block

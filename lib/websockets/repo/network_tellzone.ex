@@ -3,13 +3,8 @@ defmodule WebSockets.Repo.NetworkTellzone do
 
   use Ecto.Schema
 
-  alias Ecto.Schema, as: Schema
-
-  Schema.schema(
-    "api_networks_tellzones",
-    do: (
-      Schema.belongs_to(:network, WebSockets.Repo.Network)
-      Schema.belongs_to(:tellzone, WebSockets.Repo.Tellzone)
-    )
-  )
+  schema "api_networks_tellzones" do
+    belongs_to :network, WebSockets.Repo.Network
+    belongs_to :tellzone, WebSockets.Repo.Tellzone
+  end
 end

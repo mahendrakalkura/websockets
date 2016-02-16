@@ -3,15 +3,10 @@ defmodule WebSockets.Repo.UserStatusAttachments do
 
   use Ecto.Schema
 
-  alias Ecto.Schema, as: Schema
-
-  Schema.schema(
-    "api_users_statuses_attachments",
-    do: (
-      Schema.field(:string_original, :string)
-      Schema.field(:string_preview, :string)
-      Schema.field(:position, :integer)
-      Schema.belongs_to(:user_status, WebSockets.Repo.UserStatus)
-    )
-  )
+  schema "api_users_statuses_attachments" do
+    field :string_original, :string
+    field :string_preview, :string
+    field :position, :integer
+    belongs_to :user_status, WebSockets.Repo.UserStatus
+  end
 end
