@@ -55,97 +55,97 @@ defmodule WebSockets.RabbitMQ do
   def handle_info({:basic_deliver, contents, %{delivery_tag: delivery_tag, redelivered: _}}, channel) do
     case JSX.decode(contents) do
       {:ok, contents} ->
-        spawn(fn -> handle_info(contents) end)
+        spawn(fn() -> handle_info(contents) end)
       {:error, reason} ->
-        spawn(fn -> Utilities.log("handle_info()", %{"contents" => contents, "reason" => reason}) end)
+        spawn(fn() -> Utilities.log("handle_info()", %{"contents" => contents, "reason" => reason}) end)
     end
-    spawn(fn -> Basic.ack(channel, delivery_tag) end)
+    spawn(fn() -> Basic.ack(channel, delivery_tag) end)
     {:noreply, channel}
   end
 
   def handle_info(%{"args" => args}) do
-    spawn(fn -> handle_info(List.first(args)) end)
+    spawn(fn() -> handle_info(List.first(args)) end)
   end
 
   def handle_info(%{"subject" => subject, "body" => body, "action" => action, "users" => users}) do
-    spawn(fn -> info(subject, body, action, users) end)
+    spawn(fn() -> info(subject, body, action, users) end)
   end
 
   def handle_info(%{"subject" => subject, "body" => body, "user_ids" => user_ids}) do
-    spawn(fn -> info(subject, body, user_ids) end)
+    spawn(fn() -> info(subject, body, user_ids) end)
   end
 
   def handle_info(%{"subject" => subject, "body" => body}) do
-    spawn(fn -> info(subject, body) end)
+    spawn(fn() -> info(subject, body) end)
   end
 
   def handle_info(contents) do
-    spawn(fn -> Utilities.log("handle_info()", %{"contents" => contents}) end)
+    spawn(fn() -> Utilities.log("handle_info()", %{"contents" => contents}) end)
   end
 
   def info("messages", body, action, users) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "messages") end)
-    spawn(fn -> messages_1(body, action, users) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "messages") end)
+    spawn(fn() -> messages_1(body, action, users) end)
   end
 
   def info(subject, body, action, users) do
     spawn(
-      fn ->
+      fn() ->
         Utilities.log("info()", %{"subject" => subject, "body" => body, "action" => action, "users" => users})
       end
     )
   end
 
   def info("master_tells", body, user_ids) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
-    spawn(fn -> master_tells_1(body, user_ids) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "master_tells") end)
+    spawn(fn() -> master_tells_1(body, user_ids) end)
   end
 
   def info("posts", body, user_ids) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "posts") end)
-    spawn(fn -> posts_1(body, user_ids) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "posts") end)
+    spawn(fn() -> posts_1(body, user_ids) end)
   end
 
   def info(subject, body, user_ids) do
-    spawn(fn -> Utilities.log("info()", %{"subject" => subject, "body" => body, "user_ids" => user_ids}) end)
+    spawn(fn() -> Utilities.log("info()", %{"subject" => subject, "body" => body, "user_ids" => user_ids}) end)
   end
 
   def info("blocks", body) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "blocks") end)
-    spawn(fn -> blocks_1(body) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "blocks") end)
+    spawn(fn() -> blocks_1(body) end)
   end
 
   def info("messages", body) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "master_tells") end)
-    spawn(fn -> messages_1(body) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "master_tells") end)
+    spawn(fn() -> messages_1(body) end)
   end
 
   def info("notifications", body) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "notifications") end)
-    spawn(fn -> notifications_1(body) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "notifications") end)
+    spawn(fn() -> notifications_1(body) end)
   end
 
   def info("profile", body) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "profile") end)
-    spawn(fn -> profile_1(body) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "profile") end)
+    spawn(fn() -> profile_1(body) end)
   end
 
   def info("users_locations", body) do
-    spawn(fn -> Utilities.log("RabbitMQ", "In", "users_locations") end)
-    spawn(fn -> users_locations_1(body) end)
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "users_locations") end)
+    spawn(fn() -> users_locations_1(body) end)
   end
 
   def info(subject, body) do
-    spawn(fn -> Utilities.log("info()", %{"subject" => subject, "body" => body}) end)
+    spawn(fn() -> Utilities.log("info()", %{"subject" => subject, "body" => body}) end)
   end
 
   def messages_1(body, action, users) do
-    Enum.each(users, fn(user) -> spawn(fn -> messages_2(body, action, user) end) end)
+    Enum.each(users, fn(user) -> spawn(fn() -> messages_2(body, action, user) end) end)
   end
 
   def messages_1(id) do
     spawn(
-      fn ->
+      fn() ->
         Message
         |> Query.from()
         |> Query.where(id: ^id)
@@ -165,13 +165,13 @@ defmodule WebSockets.RabbitMQ do
 
   def messages_2(body, action, user) do
     Enum.each(
-      Clients.select_any(user), fn(pid) -> spawn(fn -> send(pid, {"messages", body, action}) end) end
+      Clients.select_any(user), fn(pid) -> spawn(fn() -> send(pid, {"messages", body, action}) end) end
     )
   end
 
   def messages_2(message) do
-    spawn(fn -> messages_3(message, "source", "destination") end)
-    spawn(fn -> messages_3(message, "destination", "source") end)
+    spawn(fn() -> messages_3(message, "source", "destination") end)
+    spawn(fn() -> messages_3(message, "destination", "source") end)
   end
 
   def messages_3(message, "source", "destination") do
@@ -184,7 +184,7 @@ defmodule WebSockets.RabbitMQ do
 
   def messages_4(message, key, pid) do
     spawn(
-      fn ->
+      fn() ->
         message = Repo.get_message(message)
         unless message[key]["settings"]["email"] do
           put_in(message, [key, "email"], nil)
@@ -209,25 +209,25 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def master_tells_1(body, user_ids) do
-    Enum.each(user_ids, fn(user_id) -> spawn(fn -> master_tells_2(body, user_id) end) end)
+    Enum.each(user_ids, fn(user_id) -> spawn(fn() -> master_tells_2(body, user_id) end) end)
   end
 
   def master_tells_2(body, user_id) do
     Enum.each(
-      Clients.select_any(user_id), fn(pid) -> spawn(fn -> send(pid, {"master_tells", body}) end) end
+      Clients.select_any(user_id), fn(pid) -> spawn(fn() -> send(pid, {"master_tells", body}) end) end
     )
   end
 
   def posts_1(body, user_ids) do
-    Enum.each(user_ids, fn(user_id) -> spawn(fn -> posts_2(body, user_id) end) end)
+    Enum.each(user_ids, fn(user_id) -> spawn(fn() -> posts_2(body, user_id) end) end)
   end
 
   def posts_2(body, user_id) do
-    Enum.each(Clients.select_any(user_id), fn(pid) -> spawn(fn -> send(pid, {"posts", body}) end) end)
+    Enum.each(Clients.select_any(user_id), fn(pid) -> spawn(fn() -> send(pid, {"posts", body}) end) end)
   end
 
   def blocks_1(id) do
-    spawn(fn -> blocks_2(Repo.get!(Block, id)) end)
+    spawn(fn() -> blocks_2(Repo.get!(Block, id)) end)
   end
 
   def blocks_2(block) do
@@ -235,7 +235,7 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def notifications_1(id) do
-    spawn(fn -> notifications_2(Repo.get!(Notification, id)) end)
+    spawn(fn() -> notifications_2(Repo.get!(Notification, id)) end)
   end
 
   def notifications_2(notification) do
@@ -245,24 +245,24 @@ defmodule WebSockets.RabbitMQ do
   def profile_1(user_destination_id) do
     Enum.each(
       Repo.all(Tellcard, user_destination_id: user_destination_id),
-      fn(tellcard) -> spawn(fn -> profile_2(tellcard) end) end
+      fn(tellcard) -> spawn(fn() -> profile_2(tellcard) end) end
     )
   end
 
   def profile_2(tellcard) do
     Enum.each(
       Clients.select_any(tellcard.user_source_id),
-      fn(pid) -> spawn(fn -> send(pid, {"profile", tellcard.user_destination_id}) end) end
+      fn(pid) -> spawn(fn() -> send(pid, {"profile", tellcard.user_destination_id}) end) end
     )
   end
 
   def users_locations_1(id) do
-    spawn(fn -> users_locations_2(Repo.get!(UserLocation, id)) end)
+    spawn(fn() -> users_locations_2(Repo.get!(UserLocation, id)) end)
   end
 
   def users_locations_2(user_location) do
     spawn(
-      fn ->
+      fn() ->
         users_locations = UserLocation
         |> Query.from()
         |> Query.where(user_id: ^user_location.user_id)
@@ -282,7 +282,7 @@ defmodule WebSockets.RabbitMQ do
     Enum.each(
       Clients.select_any(user_location.user_id),
       fn(pid) ->
-        spawn(fn -> send(pid, {"messages", Utilities.get_radar_post(user_location)}) end)
+        spawn(fn() -> send(pid, {"messages", Utilities.get_radar_post(user_location)}) end)
       end
     )
   end
@@ -377,22 +377,22 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def users_locations_5(users_locations) when length(users_locations) === 1 do
-    spawn(fn -> users_locations_6(Enum.at(users_locations, 0)) end)
+    spawn(fn() -> users_locations_6(Enum.at(users_locations, 0)) end)
   end
 
   def users_locations_5(users_locations) when length(users_locations) === 2 do
-    spawn(fn -> users_locations_6(Enum.at(users_locations, 0)) end)
+    spawn(fn() -> users_locations_6(Enum.at(users_locations, 0)) end)
     {a, b} = Enum.at(users_locations, 0).point.coordinates
     {c, d} = Enum.at(users_locations, 1).point.coordinates
     if Utilities.get_distance({a, b}, {c, d}) > 300.00 do
-      spawn(fn -> users_locations_6(Enum.at(users_locations, 1)) end)
+      spawn(fn() -> users_locations_6(Enum.at(users_locations, 1)) end)
     end
   end
 
   def users_locations_6(user_location) do
     users = Utilities.get_users(user_location.point, 300.0)
     blocks = %{} # REVIEW
-    Enum.each(users, fn(user) -> spawn(fn -> users_locations_7(user, users, blocks) end) end)
+    Enum.each(users, fn(user) -> spawn(fn() -> users_locations_7(user, users, blocks) end) end)
   end
 
   def users_locations_7(user, users, _blocks) do
