@@ -69,7 +69,13 @@ defmodule WebSockets.Utilities do
     |> Enum.map(
       fn(u) ->
         distance = get_distance(
-          {user["point"]["longitude"], user["point"]["latitude"]}, {u["point"]["longitude"], u["point"]["latitude"]}
+          {
+            Enum.at(user["point"]["coordinates"], 0),
+            Enum.at(user["point"]["coordinates"], 1),
+          }, {
+            Enum.at(u["point"]["coordinates"], 0),
+            Enum.at(u["point"]["coordinates"], 1),
+          }
         )
         group = cond do # REVIEW
           user["tellzone_id"] === u["tellzone_id"] -> 1
@@ -90,7 +96,7 @@ defmodule WebSockets.Utilities do
     |> Enum.sort(&(&1["distance"] < &2["distance"]))
     |> Enum.with_index()
     |> Enum.map(
-      fn({position, user}) ->
+      fn({user, position}) ->
         %{
           "hash" => user["id"],
           "items" => [user],
@@ -101,6 +107,7 @@ defmodule WebSockets.Utilities do
   end
 
   def get_radar_post_1(user_location) do
+    Logger.error("IN Utilities.get_radar_post_1")
     {longitude, latitude} = user_location.point.coordinates
     case SQL.query(
       Repo,
@@ -108,15 +115,15 @@ defmodule WebSockets.Utilities do
       SELECT
           api_tellzones.id AS api_tellzones_id,
           api_tellzones.name AS api_tellzones_name,
-          ST_Distance(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163)) * 3.28084 AS distance,
+          ST_Distance(ST_Transform(api_tellzones.point, 2163), ST_Transform(ST_GeomFromText($1, 4326), 2163)) * 3.28084 AS distance,
           api_networks.id AS api_networks_id,
           api_networks.name AS api_networks_name
       FROM api_tellzones
       LEFT OUTER JOIN api_networks_tellzones ON api_networks_tellzones.tellzone_id = api_tellzones.id
       LEFT OUTER JOIN api_networks ON api_networks.id = api_networks_tellzones.network_id
-      WHERE ST_DWithin(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163), 91.44)
+      WHERE ST_DWithin(ST_Transform(api_tellzones.point, 2163), ST_Transform(ST_GeomFromText($1, 4326), 2163), 91.44)
       """,
-      [get_point(%{"longitude" => latitude, "latitude" => longitude})],
+      ["POINT(#{longitude} #{latitude})"],
       []
     ) do
       {:ok, %{num_rows: 0}} -> get_radar_post_2(user_location)
@@ -132,7 +139,7 @@ defmodule WebSockets.Utilities do
       SELECT
           api_tellzones.id AS api_tellzones_id,
           api_tellzones.name AS api_tellzones_name,
-          ST_Distance(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163)) * 3.28084 AS distance,
+          ST_Distance(ST_Transform(api_tellzones.point, 2163), ST_Transform(ST_GeomFromText($1, 4326), 2163)) * 3.28084 AS distance,
           api_networks.id AS api_networks_id,
           api_networks.name AS api_networks_name
       FROM api_tellzones
@@ -144,13 +151,13 @@ defmodule WebSockets.Utilities do
               FROM api_tellzones
               INNER JOIN api_networks_tellzones ON api_networks_tellzones.tellzone_id = api_tellzones.id
               INNER JOIN api_networks ON api_networks.id = api_networks_tellzones.network_id
-              WHERE ST_DWithin(ST_Transform(api_tellzones.point, 2163), ST_Transform($1, 2163), 8046.72)
+              WHERE ST_DWithin(ST_Transform(api_tellzones.point, 2163), ST_Transform(ST_GeomFromText($1, 4326), 2163), 8046.72)
               ORDER BY api_networks.id ASC
           )
           AND
           api_tellzones.status = $2
       """,
-      [get_point(%{"longitude" => latitude, "latitude" => longitude}), "Public"],
+      ["POINT(#{longitude} #{latitude})", "Public"],
       []
     ) do
       {:ok, %{num_rows: 0}} -> []
@@ -202,7 +209,7 @@ defmodule WebSockets.Utilities do
       INNER JOIN api_users ON api_users.id = api_users_locations.user_id
       LEFT OUTER JOIN api_users_settings AS api_users_settings ON api_users_settings.user_id = api_users.id
       WHERE
-          ST_DWithin(ST_Transform(ST_GeomFromText(%s, 4326), 2163), ST_Transform(api_users_locations.point, 2163), %s)
+          ST_DWithin(ST_Transform(ST_GeomFromText($1, 4326), 2163), ST_Transform(api_users_locations.point, 2163), $2)
           AND
           api_users_locations.is_casting IS TRUE
           AND
@@ -213,7 +220,7 @@ defmodule WebSockets.Utilities do
           api_users_settings.key = 'show_photo'
       ORDER BY api_users_locations.user_id ASC
       """,
-      [get_point(%{"longitude" => latitude, "latitude" => longitude}), radius],
+      ["POINT(#{longitude} #{latitude})", radius],
       []
     ) do
       {:ok, %{rows: rows}} -> get_users(rows)
@@ -221,6 +228,22 @@ defmodule WebSockets.Utilities do
   end
 
   def get_users(users) do
-    users # REVIEW
+    users
+    |> Enum.map(
+      fn(user) ->
+        %{
+          "network_id" => Enum.at(user, 0),
+          "tellzone_id" => Enum.at(user, 1),
+          "point" => Enum.at(
+            user, 2
+          )|>Poison.decode!,
+          "id" => Enum.at(user, 3),
+          "photo_original" => Enum.at(user, 4),
+          "photo_preview" => Enum.at(user, 5),
+          "setting_key" => Enum.at(user, 6),
+          "settings_value" => Enum.at(user, 7),
+        }
+      end
+    )
   end
 end

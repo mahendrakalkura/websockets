@@ -279,7 +279,7 @@ defmodule WebSockets.RabbitMQ do
     Enum.each(
       Clients.select_any(user_location.user_id),
       fn(pid) ->
-        spawn(fn() -> send(pid, {"messages", Utilities.get_radar_post(user_location)}) end)
+        spawn(fn() -> send(pid, {"messages", Utilities.get_radar_post_1(user_location)}) end)
       end
     )
   end
@@ -301,7 +301,7 @@ defmodule WebSockets.RabbitMQ do
   def users_locations_4(
     users_locations
   ) when is_list(users_locations) and length(users_locations) === 1 do
-    Utilities.users_locations(Enum.at(users_locations, 0))
+    users_locations_4(Enum.at(users_locations, 0))
   end
 
   def users_locations_4(user_location) do
@@ -320,7 +320,7 @@ defmodule WebSockets.RabbitMQ do
               OR
               api_users_locations.tellzone_id = $3
               OR
-              ST_DWithin(ST_Transform($4, 2163), ST_Transform(api_users_locations.point, 2163), $5)
+              ST_DWithin(ST_Transform(ST_GeomFromText($1, 4326), 2163), ST_Transform(api_users_locations.point, 2163), $5)
           )
           AND
           api_users_locations.is_casting IS TRUE
@@ -332,7 +332,7 @@ defmodule WebSockets.RabbitMQ do
         user_location.user_id,
         user_location.network_id,
         user_location.tellzone_id,
-        Utilities.get_point(%{"longitude" => latitude, "latitude" => longitude}),
+        "POINT(#{longitude} #{latitude})",
         300.00
       ],
       []
@@ -394,7 +394,7 @@ defmodule WebSockets.RabbitMQ do
 
   def users_locations_7(user, users, _blocks) do
     Enum.each(
-      Clients.select_any(user),
+      Clients.select_any(user["id"]),
       fn(pid) ->
         send(
           pid,
