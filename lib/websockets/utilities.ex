@@ -107,7 +107,6 @@ defmodule WebSockets.Utilities do
   end
 
   def get_radar_post_1(user_location) do
-    Logger.error("IN Utilities.get_radar_post_1")
     {longitude, latitude} = user_location.point.coordinates
     case SQL.query(
       Repo,

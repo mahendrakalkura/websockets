@@ -223,11 +223,11 @@ defmodule WebSockets.Router do
     end
   end
 
-  def messages_5(message = %{:type => "Response - Blocked"}) do
-    case message do
-      %{:type => "Response - Rejected"} ->
+  def messages_5(message) do
+    case message.type do
+      "Response - Rejected" ->
         spawn(fn() -> messages_6(message) end)
-      %{:type => "Response - Blocked"} ->
+      "Response - Blocked" ->
         spawn(fn() -> messages_6(message) end)
         spawn(fn() -> messages_7(message) end)
       _ -> nil
