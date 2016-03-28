@@ -63,15 +63,12 @@ defmodule WebSockets.Repo.Message do
     end
   end
 
-  def validate_post_id(parameters = %{"changes" => %{"post_id" => _}}) do
-    case parameters.changes.post_id do
-      nil -> validate_type_1(parameters)
-      _ -> parameters
-    end
-  end
-
   def validate_post_id(parameters) do
-    validate_type_1(parameters)
+    if Map.has_key?(parameters.changes, :post_id) and parameters.changes[:post_id] != 0 do
+      parameters
+    else
+      validate_type_1(parameters)
+    end
   end
 
   def validate_type_1(parameters) do
@@ -137,36 +134,31 @@ defmodule WebSockets.Repo.Message do
     end
   end
 
-  def validate_type_4(parameters = %{"changes" => %{"type" => "Message"}}, message = %{:type => "Request"}) do
-    if parameters.changes.user_source_id === message.user_destination_id do
-      Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
-    else
-      parameters
+  def validate_type_4(parameters, message) do
+    case {parameters.changes[:type], message.type} do
+      {"Message", "Request"} ->
+        if parameters.changes.user_source_id === message.user_destination_id do
+          Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
+        else
+          parameters
+        end
+      {"Ask", "Request"} ->
+        if parameters.changes.user_source_id === message.user_destination_id do
+          Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
+        else
+          parameters
+        end
+      {_, "Request"} ->
+        if parameters.changes.user_source_id === message.user_source_id do
+          Changeset.add_error(parameters, :type, "HTTP_409_CONFLICT")
+        else
+          parameters
+        end
+      {_, "Response - Blocked"} ->
+        Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
+      {_, _} ->
+        parameters
     end
-  end
-
-  def validate_type_4(parameters = %{"changes" => %{"type" => "Ask"}}, message = %{:type => "Request"}) do
-    if parameters.changes.user_source_id === message.user_destination_id do
-      Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
-    else
-      parameters
-    end
-  end
-
-  def validate_type_4(parameters, message = %{:type => "Request"}) do
-    if parameters.changes.user_source_id === message.user_source_id do
-      Changeset.add_error(parameters, :type, "HTTP_409_CONFLICT")
-    else
-      parameters
-    end
-  end
-
-  def validate_type_4(parameters, %{:type => "Response - Blocked"}) do
-    Changeset.add_error(parameters, :type, "HTTP_403_FORBIDDEN")
-  end
-
-  def validate_type_4(parameters, _message) do
-    parameters
   end
 
   def validate_blocks(parameters) do

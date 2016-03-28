@@ -6,10 +6,12 @@ defmodule WebSockets.Repo.MasterTell do
   schema "api_master_tells" do
     field :contents, :string
     field :position, :integer
+    field :description, :string
     field :is_visible, :boolean
     field :inserted_at, Ecto.DateTime
     field :updated_at, Ecto.DateTime
     belongs_to :created_by, WebSockets.Repo.User
     belongs_to :owned_by, WebSockets.Repo.User
+    belongs_to :category, WebSockets.Repo.Category
   end
 end

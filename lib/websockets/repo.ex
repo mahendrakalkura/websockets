@@ -3,19 +3,22 @@ defmodule WebSockets.Repo do
 
   use Ecto.Repo, otp_app: :websockets
 
-  alias Ecto.DateTime, as: DateTime
+  alias Ecto.Date, as: Date
+  alias WebSockets.Utilities, as: Utilities
 
   def get_master_tell(nil), do: nil
   def get_master_tell(master_tell) do
     %{
       "id" => master_tell.id,
+      "category_id" => master_tell.category_id,
       "created_by_id" => master_tell.created_by_id,
+      "description" => master_tell.description,
       "owned_by_id" => master_tell.owned_by_id,
       "contents" => master_tell.contents,
       "position" => master_tell.position,
       "is_visible" => master_tell.is_visible,
-      "inserted_at" => DateTime.to_iso8601(master_tell.inserted_at),
-      "updated_at" => DateTime.to_iso8601(master_tell.updated_at)
+      "inserted_at" => Utilities.get_formatted_datetime(master_tell.inserted_at),
+      "updated_at" => Utilities.get_formatted_datetime(master_tell.updated_at)
     }
   end
 
@@ -38,8 +41,8 @@ defmodule WebSockets.Repo do
       "type" => message.type,
       "contents" => message.contents,
       "status" => message.status,
-      "inserted_at" => DateTime.to_iso8601(message.inserted_at),
-      "updated_at" => DateTime.to_iso8601(message.inserted_at),
+      "inserted_at" => Utilities.get_formatted_datetime(message.inserted_at),
+      "updated_at" => Utilities.get_formatted_datetime(message.inserted_at),
       "attachments" => get_message_attachments(message.attachments)
     }
   end
@@ -78,9 +81,9 @@ defmodule WebSockets.Repo do
       "category_id" => post.category_id,
       "title" => post.title,
       "contents" => post.contents,
-      "inserted_at" => DateTime.to_iso8601(post.inserted_at),
-      "updated_at" => DateTime.to_iso8601(post.updated_at),
-      "expired_at" => DateTime.to_iso8601(post.expired_at),
+      "inserted_at" => Utilities.get_formatted_datetime(post.inserted_at),
+      "updated_at" => Utilities.get_formatted_datetime(post.updated_at),
+      "expired_at" => Utilities.get_formatted_datetime(post.expired_at),
       "attachments" => get_post_attachments(post.attachments)
     }
   end
@@ -96,8 +99,8 @@ defmodule WebSockets.Repo do
           "string_original" => attachment.string_original,
           "string_preview" => attachment.string_preview,
           "position" => attachment.position,
-          "inserted_at" => DateTime.to_iso8601(attachment.inserted_at),
-          "updated_at" => DateTime.to_iso8601(attachment.updated_at)
+          "inserted_at" => Utilities.get_formatted_datetime(attachment.inserted_at),
+          "updated_at" => Utilities.get_formatted_datetime(attachment.updated_at)
         }
       end
     )
@@ -112,7 +115,7 @@ defmodule WebSockets.Repo do
       "photo_preview" => user.photo_preview,
       "first_name" => user.first_name,
       "last_name" => user.last_name,
-      "date_of_birth" => user.date_of_birth,
+      "date_of_birth" => Date.to_string(user.date_of_birth),
       "gender" => user.gender,
       "location" => user.location,
       "description" => user.description,

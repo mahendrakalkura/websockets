@@ -5,9 +5,12 @@ defmodule WebSockets.Utilities do
   alias AMQP.Channel, as: Channel
   alias AMQP.Connection, as: Connection
   alias Ecto.Adapters.SQL, as: SQL
+  alias Ecto.DateTime, as: DateTime
   alias Geo.WKT, as: WKT
   alias GeoPotion.Distance, as: Distance
   alias GeoPotion.Vector, as: Vector
+  alias Timex.Date, as: Date
+  alias Timex.DateFormat, as: DateFormat
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
 
@@ -42,6 +45,12 @@ defmodule WebSockets.Utilities do
 
   def get_distance({a, b}, {c, d}) do
     Distance.to_ft(Vector.calculate(%{longitude: a, latitude: b}, %{longitude: c, latitude: d}).distance).value
+  end
+
+  def get_formatted_datetime(datetime) do
+    {:ok, datetime} = DateTime.dump(datetime)
+    Date.from(datetime)
+    |> DateFormat.format!("%Y-%m-%dT%H:%M:%S.%f", :strftime)
   end
 
   def get_id(integer) when is_integer(integer) do
