@@ -6,6 +6,8 @@ defmodule WebSockets.Repo do
   alias Ecto.Date, as: Date
   alias WebSockets.Utilities, as: Utilities
 
+  require Poison
+
   def get_master_tell(nil), do: nil
   def get_master_tell(master_tell) do
     %{
@@ -67,9 +69,9 @@ defmodule WebSockets.Repo do
       "id" => notification.id,
       "user_id" => notification.user_id,
       "type" => notification.type,
-      "contents" => notification.contents,
+      "contents" => Poison.decode!(notification.contents),
       "status" => notification.status,
-      "timestamp" => notification.timestamp
+      "timestamp" => Utilities.get_formatted_datetime(notification.timestamp)
     }
   end
 

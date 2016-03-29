@@ -228,7 +228,11 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def blocks_2(block) do
-    send(Clients.select_any(block.user_destination_id), {"blocks", block.user_source_id})
+    Enum.each(
+      Clients.select_any(block.user_destination_id),
+      fn(pid) -> spawn(fn() -> send(pid, {"blocks", block.user_source_id}) end)
+      end
+    )
   end
 
   def notifications_1(id) do
@@ -236,7 +240,11 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def notifications_2(notification) do
-    send(Clients.select_any(notification.user_id), {"blocks", Repo.get_notification(notification)})
+    Enum.each(
+      Clients.select_any(notification.user_id),
+      fn(pid) -> spawn(fn() -> send(pid, {"notifications", Repo.get_notification(notification)}) end)
+      end
+    )
   end
 
   def profile_1(user_destination_id) do

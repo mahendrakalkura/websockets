@@ -5,7 +5,7 @@ defmodule WebSockets.Repo.Notification do
 
   schema "api_notifications" do
     field :type, :string
-    field :contents, :map
+    field :contents, :string
     field :status, :string
     field :timestamp, Ecto.DateTime
     belongs_to :user, WebSockets.Repo.User

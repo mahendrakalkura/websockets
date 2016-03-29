@@ -10,7 +10,7 @@ defmodule WebSockets.Repo.Tellzone do
     field :location, :string
     field :phone, :string
     field :url, :string
-    field :hours, :map
+    field :hours, :string
     field :point, Geo.Point
     field :status, :string
     field :inserted_at, Ecto.DateTime
