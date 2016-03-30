@@ -69,7 +69,7 @@ defmodule WebSockets.Repo do
       "id" => notification.id,
       "user_id" => notification.user_id,
       "type" => notification.type,
-      "contents" => Poison.decode!(notification.contents),
+      "contents" => elem(Poison.decode(notification.contents), 1),
       "status" => notification.status,
       "timestamp" => Utilities.get_formatted_datetime(notification.timestamp)
     }
