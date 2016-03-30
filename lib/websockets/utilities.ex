@@ -50,6 +50,7 @@ defmodule WebSockets.Utilities do
     )
   end
 
+  def get_formatted_datetime(nil), do: nil
   def get_formatted_datetime(datetime) do
     {:ok, datetime} = DateTime.dump(datetime)
     Date.from(datetime)

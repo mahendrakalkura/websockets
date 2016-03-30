@@ -3,7 +3,12 @@ defmodule WebSockets.Repo do
 
   use Ecto.Repo, otp_app: :websockets
 
+  import Ecto.Query
+
   alias Ecto.Date, as: Date
+  alias Geo.JSON, as: JSON
+  alias WebSockets.Repo, as: Repo
+  alias WebSockets.Repo.MasterTellTellzone, as: MasterTellTellzone
   alias WebSockets.Utilities, as: Utilities
 
   require Poison
@@ -18,10 +23,20 @@ defmodule WebSockets.Repo do
       "owned_by_id" => master_tell.owned_by_id,
       "contents" => master_tell.contents,
       "position" => master_tell.position,
+      "tellzone" => get_master_tell_tellzone(master_tell).tellzone |> get_tellzone,
       "is_visible" => master_tell.is_visible,
       "inserted_at" => Utilities.get_formatted_datetime(master_tell.inserted_at),
       "updated_at" => Utilities.get_formatted_datetime(master_tell.updated_at)
     }
+  end
+
+  def get_master_tell_tellzone([]), do: []
+  def get_master_tell_tellzone(master_tell) do
+    MasterTellTellzone
+    |> select([master_tell_tellzone], master_tell_tellzone)
+    |> where([master_tell_tellzone], master_tell_tellzone.master_tell_id == ^master_tell.id)
+    |> Repo.one()
+    |> Repo.preload(:tellzone)
   end
 
   def get_message(nil), do: nil
@@ -106,6 +121,26 @@ defmodule WebSockets.Repo do
         }
       end
     )
+  end
+
+  def get_tellzone([]), do: []
+  def get_tellzone(tellzone) do
+    %{
+      "name" => tellzone.name,
+      "photo" => tellzone.photo,
+      "location" => tellzone.location,
+      "phone" => tellzone.phone,
+      "url" => tellzone.url,
+      "hours" => elem(Poison.decode(tellzone.hours), 1),
+      "point" => JSON.encode(tellzone.point),
+      "inserted_at" => Utilities.get_formatted_datetime(tellzone.inserted_at),
+      "updated_at" => Utilities.get_formatted_datetime(tellzone.updated_at),
+      "status" => tellzone.status,
+      "type" => tellzone.type,
+      "user_id" => tellzone.user_id,
+      "ended_at" => Utilities.get_formatted_datetime(tellzone.ended_at),
+      "started_at" => Utilities.get_formatted_datetime(tellzone.started_at),
+    }
   end
 
   def get_user(nil), do: nil
