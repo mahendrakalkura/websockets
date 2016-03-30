@@ -44,7 +44,7 @@ defmodule WebSockets.Utilities do
   end
 
   def get_distance({a, b}, {c, d}) do
-    Distance.to_ft(Vector.calculate(%{longitude: a, latitude: b}, %{longitude: c, latitude: d}).distance).value
+    Distance.to_ft(Vector.calculate(%{latitude: a, longitude: b}, %{latitude: c, longitude: d}).distance).value
   end
 
   def get_formatted_datetime(datetime) do
