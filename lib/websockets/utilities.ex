@@ -39,6 +39,37 @@ defmodule WebSockets.Utilities do
     Basic.publish(channel, exchange, routing_key, contents)
   end
 
+  def get_blocks(user_id) do
+    {:ok, %{rows: rows}} = SQL.query(
+      Repo,
+      """
+      SELECT user_source_id, user_destination_id
+      FROM api_blocks
+      WHERE user_source_id = $1 OR user_destination_id = $1
+      """,
+      [user_id],
+      []
+    )
+    flattened_list = Enum.uniq(List.flatten(rows))
+    |> Enum.map(fn(key) -> {key, []} end)
+    map = for e <- flattened_list, into: %{}, do: e
+    Enum.reduce(
+      rows,
+      map,
+      fn(row, blocks) ->
+        row_0 = Enum.at(row, 0)
+        row_1 = Enum.at(row, 1)
+        if not row_1 in blocks[row_0] do
+          blocks = Map.put(blocks, row_0, Map.get(blocks, row_0) ++ [row_1])
+        end
+        if not row_0 in blocks[row_1] do
+          blocks = Map.put(blocks, row_1, Map.get(blocks, row_1) ++ [row_0])
+        end
+        blocks
+      end
+    )
+  end
+
   def get_direction(string) do
     :io_lib.format("~-3s", [string])
   end

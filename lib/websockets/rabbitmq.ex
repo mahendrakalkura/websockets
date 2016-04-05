@@ -8,6 +8,7 @@ defmodule WebSockets.RabbitMQ do
   alias AMQP.Connection, as: Connection
   alias AMQP.Exchange, as: Exchange
   alias AMQP.Queue, as: Queue
+  alias Ecto.Adapters.SQL, as: SQL
   alias Ecto.Query, as: Query
   alias WebSockets.Clients, as: Clients
   alias WebSockets.Repo, as: Repo
@@ -302,7 +303,7 @@ defmodule WebSockets.RabbitMQ do
       and
       user_location_1.tellzone_id === user_location_2.tellzone_id
     ) do
-      Utilities.users_locations_4(user_location_1)
+      users_locations_4(user_location_1)
     end
   end
 
@@ -313,7 +314,7 @@ defmodule WebSockets.RabbitMQ do
   end
 
   def users_locations_4(user_location) do
-    _blocks = %{} # REVIEW
+    blocks = Utilities.get_blocks(user_location.user_id)
     {longitude, latitude} = user_location.point.coordinates
     user_ids = case SQL.query(
       Repo,
@@ -328,7 +329,7 @@ defmodule WebSockets.RabbitMQ do
               OR
               api_users_locations.tellzone_id = $3
               OR
-              ST_DWithin(ST_Transform(ST_GeomFromText($1, 4326), 2163), ST_Transform(api_users_locations.point, 2163), $5)
+              ST_DWithin(ST_Transform(ST_GeomFromText($4, 4326), 2163), ST_Transform(api_users_locations.point, 2163), $5)
           )
           AND
           api_users_locations.is_casting IS TRUE
@@ -345,10 +346,19 @@ defmodule WebSockets.RabbitMQ do
       ],
       []
     ) do
-      {:ok, %{rows: rows}} -> Enum.uniq(Enum.each(rows, fn([user_id]) -> user_id end))
+      {:ok, %{rows: rows}} -> Enum.uniq(Enum.map(rows, fn([user_id]) -> user_id end))
       _ -> []
     end
-    if length(user_ids) do
+    if !Enum.empty?(user_ids) do
+      user_ids = Enum.map(
+        user_ids,
+        fn(user_id) ->
+          if not user_id in Map.get(blocks, user_location.user_id, []) do
+            user_id
+          end
+        end
+      )
+      |> Enum.reject(&(is_nil(&1)))
       Utilities.publish(
         WebSockets.get_exchange(:websockets),
         WebSockets.get_routing_key(:websockets),
@@ -396,11 +406,20 @@ defmodule WebSockets.RabbitMQ do
 
   def users_locations_6(user_location) do
     users = Utilities.get_users(user_location.point, 300.0)
-    blocks = %{} # REVIEW
-    Enum.each(users, fn(user) -> spawn(fn() -> users_locations_7(user, users, blocks) end) end)
+    Enum.each(users, fn(user) -> spawn(fn() -> users_locations_7(user, users) end) end)
   end
 
-  def users_locations_7(user, users, _blocks) do
+  def users_locations_7(user, users) do
+    blocks = Utilities.get_blocks(user["id"])
+    users = Enum.map(
+      users,
+      fn(u) ->
+        if not u["id"] in Map.get(blocks, user["id"], []) do
+          u
+        end
+      end
+    )
+    |> Enum.reject(&(is_nil(&1)))
     Enum.each(
       Clients.select_any(user["id"]),
       fn(pid) ->
