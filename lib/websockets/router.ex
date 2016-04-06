@@ -309,6 +309,22 @@ defmodule WebSockets.Router do
   end
 
   def messages_9(message = %{:type => "Request"}) do
+    Message.changeset(
+      %Message{},
+      %{
+        "user_source_id" => message.user_destination_id,
+        "user_source_is_hidden" => false,
+        "user_destination_id" => message.user_source_id,
+        "user_destination_is_hidden" => false,
+        "user_status_id" => Map.get(message, :user_status_id, nil),
+        "master_tell_id" => Map.get(message, :master_tell_id, nil),
+        "post_id" => Map.get(message, :post_id, nil),
+        "type" => "Response - Accepted",
+        "contents" => "",
+        "status" => "Unread",
+        "attachments" => []
+      }
+    ) |> Repo.insert
     case SQL.query(
       Repo,
       "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",

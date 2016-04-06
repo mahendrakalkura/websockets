@@ -59,10 +59,10 @@ defmodule WebSockets.Utilities do
       fn(row, blocks) ->
         row_0 = Enum.at(row, 0)
         row_1 = Enum.at(row, 1)
-        if not row_1 in blocks[row_0] do
+        unless row_1 in blocks[row_0] do
           blocks = Map.put(blocks, row_0, Map.get(blocks, row_0) ++ [row_1])
         end
-        if not row_0 in blocks[row_1] do
+        unless row_0 in blocks[row_1] do
           blocks = Map.put(blocks, row_1, Map.get(blocks, row_1) ++ [row_0])
         end
         blocks
@@ -106,48 +106,6 @@ defmodule WebSockets.Utilities do
 
   def get_point(_) do
     nil
-  end
-
-  def get_radar_get(user, users) do
-    users
-    |> Enum.map(
-      fn(u) ->
-        distance = get_distance(
-          {
-            Enum.at(user["point"]["coordinates"], 0),
-            Enum.at(user["point"]["coordinates"], 1),
-          }, {
-            Enum.at(u["point"]["coordinates"], 0),
-            Enum.at(u["point"]["coordinates"], 1),
-          }
-        )
-        group = cond do # REVIEW
-          user["tellzone_id"] === u["tellzone_id"] -> 1
-          distance <= 300.0 -> 1
-          true -> 2
-        end
-        # REVIEW (settings.show_photo -> u.photo_original + u.photo_preview)
-        # REVIEW (delete -> u.network_id, u.tellzone_id, u.point + u.settings)
-        %{
-          "id" => u["id"],
-          "photo_original" => u["photo_original"],
-          "photo_preview" => u["photo_preview"],
-          "distance" => distance,
-          "group" => group
-        }
-      end
-    )
-    |> Enum.sort(&(&1["distance"] < &2["distance"]))
-    |> Enum.with_index()
-    |> Enum.map(
-      fn({user, position}) ->
-        %{
-          "hash" => user["id"],
-          "items" => [user],
-          "position" => position + 1
-        }
-      end
-    )
   end
 
   def get_radar_post_1(user_location) do

@@ -278,7 +278,6 @@ defmodule WebSockets.RabbitMQ do
         |> Repo.all()
         users_locations_3(users_locations)
         users_locations_4(users_locations)
-        users_locations_5(users_locations)
       end
     )
   end
@@ -349,11 +348,11 @@ defmodule WebSockets.RabbitMQ do
       {:ok, %{rows: rows}} -> Enum.uniq(Enum.map(rows, fn([user_id]) -> user_id end))
       _ -> []
     end
-    if !Enum.empty?(user_ids) do
+    unless Enum.empty?(user_ids) do
       user_ids = Enum.map(
         user_ids,
         fn(user_id) ->
-          if not user_id in Map.get(blocks, user_location.user_id, []) do
+          unless user_id in Map.get(blocks, user_location.user_id, []) do
             user_id
           end
         end
@@ -389,48 +388,5 @@ defmodule WebSockets.RabbitMQ do
         }
       )
     end
-  end
-
-  def users_locations_5(users_locations) when length(users_locations) === 1 do
-    spawn(fn() -> users_locations_6(Enum.at(users_locations, 0)) end)
-  end
-
-  def users_locations_5(users_locations) when length(users_locations) === 2 do
-    spawn(fn() -> users_locations_6(Enum.at(users_locations, 0)) end)
-    {a, b} = Enum.at(users_locations, 0).point.coordinates
-    {c, d} = Enum.at(users_locations, 1).point.coordinates
-    if Utilities.get_distance({a, b}, {c, d}) > 300.00 do
-      spawn(fn() -> users_locations_6(Enum.at(users_locations, 1)) end)
-    end
-  end
-
-  def users_locations_6(user_location) do
-    users = Utilities.get_users(user_location.point, 300.0)
-    Enum.each(users, fn(user) -> spawn(fn() -> users_locations_7(user, users) end) end)
-  end
-
-  def users_locations_7(user, users) do
-    blocks = Utilities.get_blocks(user["id"])
-    users = Enum.map(
-      users,
-      fn(u) ->
-        if not u["id"] in Map.get(blocks, user["id"], []) do
-          u
-        end
-      end
-    )
-    |> Enum.reject(&(is_nil(&1)))
-    Enum.each(
-      Clients.select_any(user["id"]),
-      fn(pid) ->
-        send(
-          pid,
-          {
-            "users_locations_get",
-            Utilities.get_radar_get(user, Enum.filter(users, fn(u) -> user["id"] != u["id"] end))
-          }
-        )
-      end
-    )
   end
 end
