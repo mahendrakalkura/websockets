@@ -309,7 +309,7 @@ defmodule WebSockets.Router do
   end
 
   def messages_9(message = %{:type => "Request"}) do
-    Message.changeset(
+    changeset = Message.changeset(
       %Message{},
       %{
         "user_source_id" => message.user_destination_id,
@@ -324,7 +324,10 @@ defmodule WebSockets.Router do
         "status" => "Unread",
         "attachments" => []
       }
-    ) |> Repo.insert
+    )
+    if changeset.valid? do
+      Repo.insert(changeset)
+    end
     case SQL.query(
       Repo,
       "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",

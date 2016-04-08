@@ -328,7 +328,11 @@ defmodule WebSockets.RabbitMQ do
               OR
               api_users_locations.tellzone_id = $3
               OR
-              ST_DWithin(ST_Transform(ST_GeomFromText($4, 4326), 2163), ST_Transform(api_users_locations.point, 2163), $5)
+              ST_DWithin(
+                ST_Transform(ST_GeomFromText($4, 4326), 2163),
+                ST_Transform(api_users_locations.point, 2163),
+                $5
+              )
           )
           AND
           api_users_locations.is_casting IS TRUE
@@ -357,7 +361,7 @@ defmodule WebSockets.RabbitMQ do
           end
         end
       )
-      |> Enum.reject(&(is_nil(&1)))
+      user_ids = Enum.reject(user_ids, &(is_nil(&1)))
       Utilities.publish(
         WebSockets.get_exchange(:websockets),
         WebSockets.get_routing_key(:websockets),
