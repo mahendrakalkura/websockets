@@ -357,6 +357,7 @@ defmodule WebSockets.RabbitMQ do
             "type" => "zone_change",
             "tellzone_id" => user_location_1.tellzone_id,
           }
+        ]
       )
     end
     unless (
