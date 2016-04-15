@@ -338,7 +338,7 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          {
+          [
             message.user_destination_id,
             %{
               "aps" => %{
@@ -352,7 +352,7 @@ defmodule WebSockets.Router do
               "user_source_id" => message.user_source_id,
               "post_id" => message.post_id
             }
-          }
+          ]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
@@ -370,7 +370,7 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          {
+          [
             message.user_destination_id,
             %{
               "aps" => %{
@@ -384,7 +384,7 @@ defmodule WebSockets.Router do
               "user_source_id" => message.user_source_id,
               "post_id" => message.post_id
             }
-          }
+          ]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
@@ -402,7 +402,7 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          {
+          [
             message.user_destination_id,
             %{
               "aps" => %{
@@ -416,7 +416,7 @@ defmodule WebSockets.Router do
               "user_source_id" => message.user_source_id,
               "post_id" => message.post_id
             }
-          }
+          ]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
@@ -434,7 +434,7 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          {
+          [
             message.user_destination_id,
             %{
               "aps" => %{
@@ -448,7 +448,7 @@ defmodule WebSockets.Router do
               "user_source_id" => message.user_source_id,
               "post_id" => message.post_id
             }
-          }
+          ]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_9()", %{"exception" => exception}) end)
