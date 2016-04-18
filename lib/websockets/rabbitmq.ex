@@ -73,6 +73,10 @@ defmodule WebSockets.RabbitMQ do
     spawn(fn() -> info(subject, body, user_ids) end)
   end
 
+  def handle_info(%{"subject" => subject, "body" => body, "action" => action}) do
+    spawn(fn() -> info(subject, body, action) end)
+  end
+
   def handle_info(%{"subject" => subject, "body" => body}) do
     spawn(fn() -> info(subject, body) end)
   end
@@ -92,6 +96,11 @@ defmodule WebSockets.RabbitMQ do
         Utilities.log("info()", %{"subject" => subject, "body" => body, "action" => action, "users" => users})
       end
     )
+  end
+
+  def info("tellzones", body, action) do
+    spawn(fn() -> Utilities.log("RabbitMQ", "In", "tellzones") end)
+    spawn(fn() -> tellzones(body, action) end)
   end
 
   def info("master_tells", body, user_ids) do
@@ -259,6 +268,13 @@ defmodule WebSockets.RabbitMQ do
     Enum.each(
       Clients.select_any(tellcard.user_source_id),
       fn(pid) -> spawn(fn() -> send(pid, {"profile", tellcard.user_destination_id}) end) end
+    )
+  end
+
+  def tellzones(body, action) do
+    Enum.each(
+      Clients.select_all(),
+      fn{pid, _} -> spawn(fn() -> send(pid, {"tellzones", body, action}) end) end
     )
   end
 
