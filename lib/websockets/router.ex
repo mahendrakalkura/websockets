@@ -330,28 +330,45 @@ defmodule WebSockets.Router do
     end
     case SQL.query(
       Repo,
-      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      "SELECT id FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
       [message.user_destination_id, "notifications_invitations", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} ->
+      {:ok, %{rows: _, num_rows: 1}} ->
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          [
-            message.user_destination_id,
-            %{
-              "aps" => %{
-                "alert" => %{
-                  "title" => "New message from user",
-                  "body" => message.contents # REVIEW
+          %{
+            "args"=> [
+              message.user_destination_id,
+              %{
+                "aps" => %{
+                  "alert" => %{
+                    "title" => "New message from user",
+                    "body" => message.contents,
+                  },
+                  "badge" => 0,
                 },
-                "badge" => 0 # REVIEW
-              },
-              "type" => "message",
-              "user_source_id" => message.user_source_id,
-              "post_id" => message.post_id
-            }
+                "post_id" => message.post_id,
+                "type" => "message",
+                "user_source_id" => message.user_source_id,
+              }
+            ],
+            "callbacks" => nil,
+            "chord" => nil,
+            "errbacks" => nil,
+            "eta" => nil,
+            "expires" => nil,
+            "id" => nil,
+            "kwargs" => %{},
+            "retries" => 0,
+            "task" => "api.tasks.push_notifications",
+            "taskset" => nil,
+            "timelimit" => [nil, nil],
+            "utc" => true,
+          },
+          [
+            content_type: "application/json",
           ]
         )
       {:ok, _} -> nil
@@ -362,28 +379,45 @@ defmodule WebSockets.Router do
   def messages_9(message = %{:type => "Response - Accepted"}) do
     case SQL.query(
       Repo,
-      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      "SELECT id FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
       [message.user_destination_id, "notifications_invitations", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} ->
+      {:ok, %{rows: _, num_rows: 1}} ->
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          [
-            message.user_destination_id,
-            %{
-              "aps" => %{
-                "alert" => %{
-                  "title" => "New message from user",
-                  "body" => message.contents # REVIEW
+          %{
+            "args"=> [
+              message.user_destination_id,
+              %{
+                "aps" => %{
+                  "alert" => %{
+                    "title" => "New message from user",
+                    "body" => message.contents,
+                  },
+                  "badge" => 0,
                 },
-                "badge" => 0 # REVIEW
-              },
-              "type" => "message",
-              "user_source_id" => message.user_source_id,
-              "post_id" => message.post_id
-            }
+                "post_id" => message.post_id,
+                "type" => "message",
+                "user_source_id" => message.user_source_id,
+              }
+            ],
+            "callbacks" => nil,
+            "chord" => nil,
+            "errbacks" => nil,
+            "eta" => nil,
+            "expires" => nil,
+            "id" => nil,
+            "kwargs" => %{},
+            "retries" => 0,
+            "task" => "api.tasks.push_notifications",
+            "taskset" => nil,
+            "timelimit" => [nil, nil],
+            "utc" => true,
+          },
+          [
+            content_type: "application/json",
           ]
         )
       {:ok, _} -> nil
@@ -394,28 +428,45 @@ defmodule WebSockets.Router do
   def messages_9(message = %{:type => "Message"}) do
     case SQL.query(
       Repo,
-      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      "SELECT id FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
       [message.user_destination_id, "notifications_messages", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} ->
+      {:ok, %{rows: _, num_rows: 1}} ->
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          [
-            message.user_destination_id,
-            %{
-              "aps" => %{
-                "alert" => %{
-                  "title" => "New message from user",
-                  "body" => message.contents # REVIEW
+          %{
+            "args"=> [
+              message.user_destination_id,
+              %{
+                "aps" => %{
+                  "alert" => %{
+                    "title" => "New message from user",
+                    "body" => message.contents,
+                  },
+                  "badge" => 0,
                 },
-                "badge" => 0 # REVIEW
-              },
-              "type" => "message",
-              "user_source_id" => message.user_source_id,
-              "post_id" => message.post_id
-            }
+                "post_id" => message.post_id,
+                "type" => "message",
+                "user_source_id" => message.user_source_id,
+              }
+            ],
+            "callbacks" => nil,
+            "chord" => nil,
+            "errbacks" => nil,
+            "eta" => nil,
+            "expires" => nil,
+            "id" => nil,
+            "kwargs" => %{},
+            "retries" => 0,
+            "task" => "api.tasks.push_notifications",
+            "taskset" => nil,
+            "timelimit" => [nil, nil],
+            "utc" => true,
+          },
+          [
+            content_type: "application/json",
           ]
         )
       {:ok, _} -> nil
@@ -426,28 +477,45 @@ defmodule WebSockets.Router do
   def messages_9(message = %{:type => "Ask"}) do
     case SQL.query(
       Repo,
-      "SELECT COUNT(id) FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
+      "SELECT id FROM api_users_settings WHERE user_id = $1 AND key = $2 AND value = $3",
       [message.user_destination_id, "notifications_messages", "True"],
       []
     ) do
-      {:ok, %{rows: [[0]], num_rows: 1}} ->
+      {:ok, %{rows: _, num_rows: 1}} ->
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          [
-            message.user_destination_id,
-            %{
-              "aps" => %{
-                "alert" => %{
-                  "title" => "New message from user",
-                  "body" => message.contents # REVIEW
+          %{
+            "args"=> [
+              message.user_destination_id,
+              %{
+                "aps" => %{
+                  "alert" => %{
+                    "title" => "New message from user",
+                    "body" => message.contents,
+                  },
+                  "badge" => 0,
                 },
-                "badge" => 0 # REVIEW
-              },
-              "type" => "message",
-              "user_source_id" => message.user_source_id,
-              "post_id" => message.post_id
-            }
+                "post_id" => message.post_id,
+                "type" => "message",
+                "user_source_id" => message.user_source_id,
+              }
+            ],
+            "callbacks" => nil,
+            "chord" => nil,
+            "errbacks" => nil,
+            "eta" => nil,
+            "expires" => nil,
+            "id" => nil,
+            "kwargs" => %{},
+            "retries" => 0,
+            "task" => "api.tasks.push_notifications",
+            "taskset" => nil,
+            "timelimit" => [nil, nil],
+            "utc" => true,
+          },
+          [
+            content_type: "application/json",
           ]
         )
       {:ok, _} -> nil

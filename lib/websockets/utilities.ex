@@ -32,11 +32,11 @@ defmodule WebSockets.Utilities do
     ExSentry.capture_message(message, extra: extra)
   end
 
-  def publish(exchange, routing_key, contents) do
+  def publish(exchange, routing_key, contents, options \\ []) do
     {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
     {:ok, channel} = Channel.open(connection)
     {:ok, contents} = JSX.encode(contents)
-    Basic.publish(channel, exchange, routing_key, contents)
+    Basic.publish(channel, exchange, routing_key, contents, options)
   end
 
   def get_blocks(user_id) do
