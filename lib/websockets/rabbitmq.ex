@@ -329,7 +329,7 @@ defmodule WebSockets.RabbitMQ do
         {:ok, %{rows: rows}} -> Enum.at(rows, 0)
         _ -> []
       end
-      badge = badge + if !Enum.empty?(count), do: badge + Enum.at(count, 0), else: 0
+      badge = badge + unless Enum.empty?(count), do: badge + Enum.at(count, 0)
       count = case SQL.query(
         Repo,
         """
@@ -341,7 +341,7 @@ defmodule WebSockets.RabbitMQ do
         {:ok, %{rows: rows}} -> Enum.at(rows, 0)
         _ -> []
       end
-      badge = badge + if !Enum.empty?(count), do: Enum.at(count, 0), else: 0
+      badge = badge + unless Enum.empty?(count), do: Enum.at(count, 0)
       Utilities.publish(
         "api.tasks.push_notifications",
         "api.tasks.push_notifications",
