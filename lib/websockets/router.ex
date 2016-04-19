@@ -338,38 +338,22 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          %{
-            "args"=> [
-              message.user_destination_id,
-              %{
-                "aps" => %{
-                  "alert" => %{
-                    "title" => "New message from user",
-                    "body" => message.contents,
-                  },
-                  "badge" => 0,
-                },
-                "post_id" => message.post_id,
-                "type" => "message",
-                "user_source_id" => message.user_source_id,
-              }
-            ],
-            "callbacks" => nil,
-            "chord" => nil,
-            "errbacks" => nil,
-            "eta" => nil,
-            "expires" => nil,
-            "id" => nil,
-            "kwargs" => %{},
-            "retries" => 0,
-            "task" => "api.tasks.push_notifications",
-            "taskset" => nil,
-            "timelimit" => [nil, nil],
-            "utc" => true,
-          },
           [
-            content_type: "application/json",
-          ]
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents,
+                },
+                "badge" => 0,
+              },
+              "post_id" => message.post_id,
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+            }
+          ],
+          [content_type: "application/json"]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
@@ -387,38 +371,22 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          %{
-            "args"=> [
-              message.user_destination_id,
-              %{
-                "aps" => %{
-                  "alert" => %{
-                    "title" => "New message from user",
-                    "body" => message.contents,
-                  },
-                  "badge" => 0,
-                },
-                "post_id" => message.post_id,
-                "type" => "message",
-                "user_source_id" => message.user_source_id,
-              }
-            ],
-            "callbacks" => nil,
-            "chord" => nil,
-            "errbacks" => nil,
-            "eta" => nil,
-            "expires" => nil,
-            "id" => nil,
-            "kwargs" => %{},
-            "retries" => 0,
-            "task" => "api.tasks.push_notifications",
-            "taskset" => nil,
-            "timelimit" => [nil, nil],
-            "utc" => true,
-          },
           [
-            content_type: "application/json",
-          ]
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents,
+                },
+                "badge" => 0,
+              },
+              "post_id" => message.post_id,
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+            }
+          ],
+          [content_type: "application/json"]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
@@ -436,38 +404,22 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          %{
-            "args"=> [
-              message.user_destination_id,
-              %{
-                "aps" => %{
-                  "alert" => %{
-                    "title" => "New message from user",
-                    "body" => message.contents,
-                  },
-                  "badge" => 0,
-                },
-                "post_id" => message.post_id,
-                "type" => "message",
-                "user_source_id" => message.user_source_id,
-              }
-            ],
-            "callbacks" => nil,
-            "chord" => nil,
-            "errbacks" => nil,
-            "eta" => nil,
-            "expires" => nil,
-            "id" => nil,
-            "kwargs" => %{},
-            "retries" => 0,
-            "task" => "api.tasks.push_notifications",
-            "taskset" => nil,
-            "timelimit" => [nil, nil],
-            "utc" => true,
-          },
           [
-            content_type: "application/json",
-          ]
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents,
+                },
+                "badge" => 0,
+              },
+              "post_id" => message.post_id,
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+            }
+          ],
+          [content_type: "application/json"]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_6()", %{"exception" => exception}) end)
@@ -485,38 +437,22 @@ defmodule WebSockets.Router do
         Utilities.publish(
           "api.tasks.push_notifications",
           "api.tasks.push_notifications",
-          %{
-            "args"=> [
-              message.user_destination_id,
-              %{
-                "aps" => %{
-                  "alert" => %{
-                    "title" => "New message from user",
-                    "body" => message.contents,
-                  },
-                  "badge" => 0,
-                },
-                "post_id" => message.post_id,
-                "type" => "message",
-                "user_source_id" => message.user_source_id,
-              }
-            ],
-            "callbacks" => nil,
-            "chord" => nil,
-            "errbacks" => nil,
-            "eta" => nil,
-            "expires" => nil,
-            "id" => nil,
-            "kwargs" => %{},
-            "retries" => 0,
-            "task" => "api.tasks.push_notifications",
-            "taskset" => nil,
-            "timelimit" => [nil, nil],
-            "utc" => true,
-          },
           [
-            content_type: "application/json",
-          ]
+            message.user_destination_id,
+            %{
+              "aps" => %{
+                "alert" => %{
+                  "title" => "New message from user",
+                  "body" => message.contents,
+                },
+                "badge" => 0,
+              },
+              "post_id" => message.post_id,
+              "type" => "message",
+              "user_source_id" => message.user_source_id,
+            }
+          ],
+          [content_type: "application/json"]
         )
       {:ok, _} -> nil
       {:error, exception} -> spawn(fn() -> Utilities.log("messages_9()", %{"exception" => exception}) end)

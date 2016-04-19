@@ -35,6 +35,23 @@ defmodule WebSockets.Utilities do
   def publish(exchange, routing_key, contents, options \\ []) do
     {:ok, connection} = Connection.open(Application.get_env(:websockets, :broker))
     {:ok, channel} = Channel.open(connection)
+    if exchange == "api.tasks.push_notifications" and routing_key == "api.tasks.push_notifications" do
+      contents = %{
+        "args" => contents,
+        "callbacks" => nil,
+        "chord" => nil,
+        "errbacks" => nil,
+        "eta" => nil,
+        "expires" => nil,
+        "id" => nil,
+        "kwargs" => %{},
+        "retries" => 0,
+        "task" => "api.tasks.push_notifications",
+        "taskset" => nil,
+        "timelimit" => [nil, nil],
+        "utc" => true,
+      }
+    end
     {:ok, contents} = JSX.encode(contents)
     Basic.publish(channel, exchange, routing_key, contents, options)
   end

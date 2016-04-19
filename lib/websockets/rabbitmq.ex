@@ -345,36 +345,20 @@ defmodule WebSockets.RabbitMQ do
       Utilities.publish(
         "api.tasks.push_notifications",
         "api.tasks.push_notifications",
-        %{
-          "args"=> [
-            user_location_1.user_id,
-            %{
-              "aps" => %{
-                "alert" => %{
-                  "title" => "You are now at #{user_location_1.tellzone.name} zone",
-                },
-                "badge" => badge,
-              },
-              "tellzone_id" => user_location_1.tellzone_id,
-              "type" => "zone_change",
-            }
-          ],
-          "callbacks" => nil,
-          "chord" => nil,
-          "errbacks" => nil,
-          "eta" => nil,
-          "expires" => nil,
-          "id" => nil,
-          "kwargs" => %{},
-          "retries" => 0,
-          "task" => "api.tasks.push_notifications",
-          "taskset" => nil,
-          "timelimit" => [nil, nil],
-          "utc" => true,
-        },
         [
-          content_type: "application/json",
-        ]
+          user_location_1.user_id,
+          %{
+            "aps" => %{
+              "alert" => %{
+                "title" => "You are now at #{user_location_1.tellzone.name} zone",
+              },
+              "badge" => badge,
+            },
+            "tellzone_id" => user_location_1.tellzone_id,
+            "type" => "zone_change",
+          }
+        ],
+        [content_type: "application/json"]
       )
     end
     unless (
