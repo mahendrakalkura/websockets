@@ -298,7 +298,6 @@ defmodule WebSockets.RabbitMQ do
   ) when is_list(users_locations) and length(users_locations) === 2 do
     user_location_1 = Enum.at(users_locations, 0)
     user_location_2 = Enum.at(users_locations, 1)
-
     status = false
     if user_location_1.is_casting and user_location_2.is_casting do
       if (
@@ -329,7 +328,7 @@ defmodule WebSockets.RabbitMQ do
         {:ok, %{rows: rows}} -> Enum.at(rows, 0)
         _ -> []
       end
-      badge = badge + unless Enum.empty?(count), do: badge + Enum.at(count, 0)
+      badge = badge + if Enum.empty?(count), do: 0, else: Enum.at(count, 0)
       count = case SQL.query(
         Repo,
         """
@@ -341,7 +340,7 @@ defmodule WebSockets.RabbitMQ do
         {:ok, %{rows: rows}} -> Enum.at(rows, 0)
         _ -> []
       end
-      badge = badge + unless Enum.empty?(count), do: Enum.at(count, 0)
+      badge = badge + if Enum.empty?(count), do: 0, else: Enum.at(count, 0)
       Utilities.publish(
         "api.tasks.push_notifications",
         "api.tasks.push_notifications",
