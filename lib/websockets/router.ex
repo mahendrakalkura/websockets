@@ -552,27 +552,60 @@ defmodule WebSockets.Router do
   end
 
   def users_locations_post_4(pid, changeset) do
-    case Repo.insert(changeset) do
-      {:ok, user_location} ->
-        spawn(
-          fn() ->
-            Utilities.publish(
-              WebSockets.get_exchange(:websockets),
-              WebSockets.get_routing_key(:websockets),
-              %{"subject" => "users_locations", "body" => user_location.id}
-            )
-          end
-        )
-      {:error, changeset} ->
-        spawn(
-          fn() ->
-            Utilities.log(
-              "users_locations_post_4()",
-              %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
-            )
-          end
-        )
-        send(pid, {"users_locations", %{"body" => %{"errors" => "Invalid Body"}}})
+    tellzone_id = case SQL.query(
+      Repo,
+      "SELECT tellzone_id FROM api_users WHERE id = $1",
+      [changeset.changes.user_id],
+      []
+    ) do
+      {:ok, %{rows: rows, num_rows: 1}} -> Enum.at(Enum.at(rows, 0), 0)
+      {:ok, _} -> nil
+    end
+    id = nil
+    unless is_nil(tellzone_id) do
+      id = case SQL.query(
+        Repo,
+        "SELECT id FROM api_users_locations WHERE user_id = $1 ORDER BY id DESC LIMIT 1 OFFSET 0",
+        [changeset.changes.user_id],
+        []
+      ) do
+        {:ok, %{rows: rows, num_rows: 1}} -> Enum.at(Enum.at(rows, 0), 0)
+        {:ok, _} -> nil
+      end
+    end
+    if id do
+      spawn(
+        fn() ->
+          Utilities.publish(
+            WebSockets.get_exchange(:websockets),
+            WebSockets.get_routing_key(:websockets),
+            %{"subject" => "users_locations", "body" => id}
+          )
+        end
+      )
+    else
+      case Repo.insert(changeset) do
+        {:ok, user_location} ->
+          spawn(
+            fn() ->
+              Utilities.publish(
+                WebSockets.get_exchange(:websockets),
+                WebSockets.get_routing_key(:websockets),
+                %{"subject" => "users_locations", "body" => user_location.id}
+              )
+            end
+          )
+        {:error, changeset} ->
+          spawn(
+            fn() ->
+              Utilities.log(
+                "users_locations_post_4()",
+                %{"changeset" => %{"params" => changeset.params, "errors" => changeset.errors}}
+              )
+            end
+          )
+          send(pid, {"users_locations", %{"body" => %{"errors" => "Invalid Body"}}})
+      end
     end
   end
 end
