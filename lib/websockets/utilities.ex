@@ -151,7 +151,7 @@ defmodule WebSockets.Utilities do
       []
     ) do
       {:ok, %{num_rows: 0}} -> get_radar_post_2(user_location)
-      {:ok, %{rows: rows, num_rows: _}} -> get_radar_post_3(rows)
+      {:ok, %{rows: rows, num_rows: _}} -> get_radar_post_3(rows, user_location)
     end
   end
 
@@ -185,19 +185,18 @@ defmodule WebSockets.Utilities do
               )
               ORDER BY api_networks.id ASC
           )
-          AND
-          api_tellzones.status = $2
       """,
-      ["POINT(#{longitude} #{latitude})", "Public"],
+      ["POINT(#{longitude} #{latitude})"],
       []
     ) do
       {:ok, %{num_rows: 0}} -> []
-      {:ok, %{rows: rows, num_rows: _}} -> get_radar_post_3(rows)
+      {:ok, %{rows: rows, num_rows: _}} -> get_radar_post_3(rows, user_location)
     end
   end
 
-  def get_radar_post_3(rows) do
-    tellzones = Enum.map(
+  def get_radar_post_3(rows, user_location) do
+    {longitude, latitude} = user_location.point.coordinates
+    tellzones_one = Enum.map(
       rows,
       fn(row) ->
         %{
@@ -207,11 +206,84 @@ defmodule WebSockets.Utilities do
           "network" => %{
             "id" => Enum.at(row, 3),
             "name" => Enum.at(row, 4)
-          }
+          },
+          "source" => 1,
         }
       end
     )
-    Enum.sort(tellzones, &(&1["distance"] < &2["distance"]))
+    tellzones_one = tellzones_one
+    |> Enum.map(fn(tellzone)-> {Map.get(tellzone, "id"), tellzone} end)
+    |> Enum.into(%{})
+    rows = case SQL.query(
+      Repo,
+      """
+      SELECT
+        api_tellzones_1.id AS id,
+        api_tellzones_1.name AS name,
+        ST_Distance(
+            ST_Transform(api_tellzones_1.point, 2163),
+            ST_Transform(ST_GeomFromText($1, 4326), 2163)
+        ) * 3.28084 AS distance,
+        api_networks.id AS api_networks_id,
+        api_networks.name AS api_networks_name,
+        api_tellzones_2.source AS source
+      FROM api_tellzones api_tellzones_1
+      LEFT OUTER JOIN api_networks_tellzones ON
+          api_networks_tellzones.tellzone_id = api_tellzones_1.id
+      LEFT OUTER JOIN api_networks ON
+          api_networks.id = api_networks_tellzones.network_id
+      INNER JOIN (
+        SELECT tellzone_id, 1 As source
+        FROM api_users_locations
+        WHERE user_id = $2 AND timestamp > NOW() - INTERVAL '2 day'
+        UNION
+        SELECT tellzone_id, 2 As source
+        FROM api_master_tells_tellzones
+        INNER JOIN api_master_tells ON api_master_tells.id = api_master_tells_tellzones.master_tell_id
+        WHERE api_master_tells.owned_by_id = $2
+        UNION
+        SELECT tellzone_id, 3 As source
+        FROM api_users_tellzones
+        WHERE user_id = $2 AND favorited_at IS NOT NULL
+        UNION
+        SELECT tellzone_id, 4 As source
+        FROM api_users_tellzones
+        WHERE user_id = $2 AND pinned_at IS NOT NULL
+        UNION
+        SELECT id, 5 As source
+        FROM api_tellzones
+        WHERE user_id = $2
+      ) api_tellzones_2 ON api_tellzones_2.tellzone_id = api_tellzones_1.id
+      ORDER BY api_tellzones_2.source ASC, api_tellzones_1.id ASC
+      """,
+      ["POINT(#{longitude} #{latitude})", user_location.user_id],
+      []
+    ) do
+      {:ok, %{num_rows: 0}} -> []
+      {:ok, %{rows: rows, num_rows: _}} -> rows
+    end
+    tellzones_two = Enum.map(
+      rows,
+      fn(row) ->
+        %{
+          "id" => Enum.at(row, 0),
+          "name" => Enum.at(row, 1),
+          "distance" => Enum.at(row, 2),
+          "network" => %{
+            "id" => Enum.at(row, 3),
+            "name" => Enum.at(row, 4)
+          },
+          "source" => Enum.at(row, 5),
+        }
+      end
+    )
+    tellzones_two = tellzones_two
+    |> Enum.map(fn(tellzone)-> {Map.get(tellzone, "id"), tellzone} end)
+    |> Enum.into(%{})
+    tellzones_one
+    |> Map.merge(tellzones_two)
+    |> Map.values
+    |> Enum.sort(&(&1["distance"] < &2["distance"]))
     # sort networks by +name, -id
     # sort tellzones by +distance, -id
   end
