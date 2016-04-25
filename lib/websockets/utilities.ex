@@ -120,6 +120,40 @@ defmodule WebSockets.Utilities do
     :io_lib.format("~-8s", [string])
   end
 
+  def get_networks(rows) do
+    networks = Enum.map(
+      rows,
+      fn(row) ->
+        {Enum.at(row, 0), []}
+      end
+    )
+    networks = Enum.reduce(
+      rows,
+      Enum.into(networks, %{}),
+      fn(row, networks) ->
+        row_0 = Enum.at(row, 0)
+        networks = Map.put(
+          networks,
+          row_0,
+          Map.get(networks, row_0) ++ [%{"id" => Enum.at(row, 3), "name" => Enum.at(row, 4)}]
+        )
+        networks
+      end
+    )
+    networks
+    |> Enum.map(
+      fn{key, values} ->
+        {key, values} = {key, Enum.uniq(values)}
+      end
+    )
+    |> Enum.map(
+      fn{key, values} ->
+        {key, values} = {key, Enum.sort(values)}
+      end
+    )
+    |> Enum.into(%{})
+  end
+
   def get_point(%{"longitude" => longitude, "latitude" => latitude}) do
     WKT.decode("SRID=4326;POINT(#{longitude} #{latitude})")
   end
@@ -203,10 +237,7 @@ defmodule WebSockets.Utilities do
           "id" => Enum.at(row, 0),
           "name" => Enum.at(row, 1),
           "distance" => Enum.at(row, 2),
-          "network" => %{
-            "id" => Enum.at(row, 3),
-            "name" => Enum.at(row, 4)
-          },
+          "networks" => [],
           "source" => 1,
         }
       end
@@ -214,6 +245,7 @@ defmodule WebSockets.Utilities do
     tellzones_one = tellzones_one
     |> Enum.map(fn(tellzone)-> {Map.get(tellzone, "id"), tellzone} end)
     |> Enum.into(%{})
+    networks_one = get_networks(rows)
     rows = case SQL.query(
       Repo,
       """
@@ -269,10 +301,7 @@ defmodule WebSockets.Utilities do
           "id" => Enum.at(row, 0),
           "name" => Enum.at(row, 1),
           "distance" => Enum.at(row, 2),
-          "network" => %{
-            "id" => Enum.at(row, 3),
-            "name" => Enum.at(row, 4)
-          },
+          "networks" => [],
           "source" => Enum.at(row, 5),
         }
       end
@@ -280,9 +309,16 @@ defmodule WebSockets.Utilities do
     tellzones_two = tellzones_two
     |> Enum.map(fn(tellzone)-> {Map.get(tellzone, "id"), tellzone} end)
     |> Enum.into(%{})
-    tellzones_one
-    |> Map.merge(tellzones_two)
-    |> Map.values
+    networks_two = get_networks(rows)
+    tellzones = Map.merge(
+      Map.merge(tellzones_one, tellzones_two),
+      Map.merge(networks_one, networks_two),
+      fn (_key, value_1, value_2) ->
+        put_in(value_1, ["networks"], value_2)
+      end
+    )
+    tellzones
+    |> Map.values()
     |> Enum.sort(&(&1["distance"] < &2["distance"]))
     # sort networks by +name, -id
     # sort tellzones by +distance, -id
