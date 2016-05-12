@@ -298,68 +298,6 @@ defmodule WebSockets.RabbitMQ do
   ) when is_list(users_locations) and length(users_locations) === 2 do
     user_location_1 = Enum.at(users_locations, 0)
     user_location_2 = Enum.at(users_locations, 1)
-    status = false
-    if user_location_1.is_casting and user_location_2.is_casting do
-      if (
-        Map.has_key?(user_location_1, :tellzone_id)
-        and
-        !is_nil(user_location_1.tellzone_id)
-        and
-        (user_location_2.tellzone_id != user_location_1.tellzone_id)
-      ) do
-        status = true
-      end
-    end
-    if user_location_1.is_casting and not user_location_2.is_casting do
-      if user_location_1.tellzone_id do
-        status = True
-      end
-    end
-    if status do
-      badge = 0
-      count = case SQL.query(
-        Repo,
-        """
-        SELECT COUNT(id) FROM api_messages WHERE user_destination_id = $1 AND status = $2
-        """,
-        [user_location_1.user_id, "Unread"],
-        []
-      ) do
-        {:ok, %{rows: rows}} -> Enum.at(rows, 0)
-        _ -> []
-      end
-      badge = badge + if Enum.empty?(count), do: 0, else: Enum.at(count, 0)
-      count = case SQL.query(
-        Repo,
-        """
-        SELECT COUNT(id) FROM api_notifications WHERE user_id = $1 AND status = $2
-        """,
-        [user_location_1.user_id, "Unread"],
-        []
-      ) do
-        {:ok, %{rows: rows}} -> Enum.at(rows, 0)
-        _ -> []
-      end
-      badge = badge + if Enum.empty?(count), do: 0, else: Enum.at(count, 0)
-      Utilities.publish(
-        "api.tasks.push_notifications",
-        "api.tasks.push_notifications",
-        [
-          user_location_1.user_id,
-          %{
-            "aps" => %{
-              "alert" => %{
-                "title" => "You are now at #{user_location_1.tellzone.name} zone",
-              },
-              "badge" => badge,
-            },
-            "tellzone_id" => user_location_1.tellzone_id,
-            "type" => "zone_change",
-          }
-        ],
-        [content_type: "application/json"]
-      )
-    end
     unless (
       user_location_1.network_id === user_location_2.network_id
       and
